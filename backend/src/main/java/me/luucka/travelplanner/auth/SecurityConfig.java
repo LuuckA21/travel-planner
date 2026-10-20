@@ -1,4 +1,4 @@
-package com.travelplanner.auth;
+package me.luucka.travelplanner.auth;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

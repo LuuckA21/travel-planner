@@ -1,4 +1,4 @@
-package com.travelplanner;
+package me.luucka.travelplanner;
 
 import org.springframework.boot.SpringApplication;
 

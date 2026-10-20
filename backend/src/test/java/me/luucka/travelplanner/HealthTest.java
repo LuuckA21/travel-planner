@@ -1,6 +1,6 @@
-package com.travelplanner;
+package me.luucka.travelplanner;
 
-import com.travelplanner.support.IntegrationTest;
+import me.luucka.travelplanner.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;

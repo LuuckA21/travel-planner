@@ -10,7 +10,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.travelplanner</groupId>
+    <groupId>me.luucka</groupId>
     <artifactId>travel-planner</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>travel-planner</name>

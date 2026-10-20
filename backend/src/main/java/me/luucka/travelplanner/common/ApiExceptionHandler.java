@@ -1,4 +1,4 @@
-package com.travelplanner.common;
+package me.luucka.travelplanner.common;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

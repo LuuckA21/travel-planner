@@ -1,4 +1,4 @@
-package com.travelplanner.common;
+package me.luucka.travelplanner.common;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON;
@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.travelplanner.support.IntegrationTest;
+import me.luucka.travelplanner.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 
 class ApiExceptionHandlerTest extends IntegrationTest {

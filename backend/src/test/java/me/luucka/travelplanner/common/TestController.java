@@ -1,4 +1,4 @@
-package com.travelplanner.common;
+package me.luucka.travelplanner.common;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
