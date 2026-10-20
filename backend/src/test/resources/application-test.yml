@@ -1,0 +1,2 @@
+app:
+  storage-dir: ${java.io.tmpdir}/travel-planner-test-files

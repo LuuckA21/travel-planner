@@ -1,0 +1,4 @@
+app:
+  registration-open: true
+  base-url: http://localhost:5173
+  storage-dir: ./data/files
