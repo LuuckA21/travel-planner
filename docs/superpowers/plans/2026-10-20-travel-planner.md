@@ -14,7 +14,7 @@
 
 - Code, identifiers, API, comments, docs: English. UI copy: Italian, only in `frontend/src/i18n/it.ts`.
 - Java 21; Spring Boot 4.1.1 (Boot 4 artifact names: `spring-boot-starter-webmvc`, `spring-boot-starter-flyway`, `spring-boot-starter-session-jdbc`, test starters `spring-boot-starter-webmvc-test`, `spring-boot-starter-security-test`, `spring-boot-starter-data-jpa-test`, `spring-boot-testcontainers`; Testcontainers 2 artifact `org.testcontainers:testcontainers-postgresql`, class `org.testcontainers.postgresql.PostgreSQLContainer`).
-- Maven groupId `com.travelplanner`, root package `com.travelplanner`.
+- Maven groupId `me.luucka`, artifactId `travel-planner`, root package `me.luucka.travelplanner`.
 - Docker images: `postgres:18.6` (also in Testcontainers), `eclipse-temurin:21-jre`, `maven:3.9-eclipse-temurin-21`, `node:22`, `restic/restic:0.19.1`.
 - Frontend scaffolded with `npm create vite@latest frontend -- --template react-ts`; keep the TypeScript/ESLint versions the template installs.
 - All primary keys UUID; `created_at`/`updated_at` (`timestamptz`) on every table.
@@ -51,9 +51,9 @@
 ### Task 1: Backend skeleton, test harness, health
 
 **Files:**
-- Create: `backend/pom.xml`, `backend/src/main/java/com/travelplanner/TravelPlannerApplication.java`
+- Create: `backend/pom.xml`, `backend/src/main/java/me/luucka/travelplanner/TravelPlannerApplication.java`
 - Create: `backend/src/main/resources/application.yml`, `application-dev.yml`, `application-prod.yml`
-- Create: `backend/src/test/java/com/travelplanner/TestcontainersConfiguration.java`, `TestTravelPlannerApplication.java`, `support/IntegrationTest.java`, `HealthTest.java`
+- Create: `backend/src/test/java/me/luucka/travelplanner/TestcontainersConfiguration.java`, `TestTravelPlannerApplication.java`, `support/IntegrationTest.java`, `HealthTest.java`
 - Create: `.gitignore` (Maven `target/`, `node_modules/`, `dist/`, `deploy/.env`, `deploy/backup.env`, `backend/data/`)
 
 **Interfaces:**
@@ -90,8 +90,8 @@ class HealthTest extends IntegrationTest {
 ### Task 2: Error handling
 
 **Files:**
-- Create: `backend/src/main/java/com/travelplanner/common/NotFoundException.java`, `ApiException.java`, `ApiExceptionHandler.java`
-- Test: `backend/src/test/java/com/travelplanner/common/ApiExceptionHandlerTest.java` (uses a test-only `@RestController` in the test sources)
+- Create: `backend/src/main/java/me/luucka/travelplanner/common/NotFoundException.java`, `ApiException.java`, `ApiExceptionHandler.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/common/ApiExceptionHandlerTest.java` (uses a test-only `@RestController` in the test sources)
 
 **Interfaces:**
 - Produces: `NotFoundException()` (→ 404); `ApiException(HttpStatus status, String code, String detail)` (→ that status, Problem Detail with property `code`); `ApiExceptionHandler` (`@RestControllerAdvice` extending `ResponseEntityExceptionHandler`) mapping `MethodArgumentNotValidException` → 400 with `errors` map, `MaxUploadSizeExceededException` → 413, `NotFoundException` → 404, `ApiException` → its status.
@@ -119,9 +119,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `backend/src/main/resources/db/migration/V2__users.sql`
-- Create in `com.travelplanner.auth`: `UserAccount.java`, `UserAccountRepository.java`, `AppUserDetails.java`, `AppUserDetailsService.java`, `SecurityConfig.java` (replaces placeholder), `AuthController.java`, `AuthService.java`, `AuthProperties.java`, `CreateUserCommand.java`, dto records `LoginRequest`, `MeResponse`, `AuthConfigResponse`
-- Create: `backend/src/test/java/com/travelplanner/support/TestUsers.java`
-- Test: `backend/src/test/java/com/travelplanner/auth/LoginTest.java`, `CreateUserCommandTest.java`
+- Create in `me.luucka.travelplanner.auth`: `UserAccount.java`, `UserAccountRepository.java`, `AppUserDetails.java`, `AppUserDetailsService.java`, `SecurityConfig.java` (replaces placeholder), `AuthController.java`, `AuthService.java`, `AuthProperties.java`, `CreateUserCommand.java`, dto records `LoginRequest`, `MeResponse`, `AuthConfigResponse`
+- Create: `backend/src/test/java/me/luucka/travelplanner/support/TestUsers.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/auth/LoginTest.java`, `CreateUserCommandTest.java`
 
 **Interfaces:**
 - Produces: table `user_account(id uuid pk, email text unique not null, password_hash text not null, display_name text not null, email_verified_at timestamptz, created_at, updated_at)`; table `auth_token(id uuid pk, user_id uuid fk → user_account on delete cascade, purpose text not null, token_hash text unique not null, expires_at timestamptz not null, used_at timestamptz, created_at, updated_at)` (used from Task 4).
@@ -162,10 +162,10 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 ### Task 4: Registration, email verification, mailer
 
 **Files:**
-- Create in `com.travelplanner.auth`: `Mailer.java`, `SmtpMailer.java`, `LoggingMailer.java`, `AuthToken.java`, `AuthTokenRepository.java`, `AuthTokenService.java`, dto `RegisterRequest`, `TokenRequest`, `EmailRequest`
+- Create in `me.luucka.travelplanner.auth`: `Mailer.java`, `SmtpMailer.java`, `LoggingMailer.java`, `AuthToken.java`, `AuthTokenRepository.java`, `AuthTokenService.java`, dto `RegisterRequest`, `TokenRequest`, `EmailRequest`
 - Modify: `AuthController.java`, `AuthService.java`, `SecurityConfig.java` (nothing new if paths already permitted)
-- Create: `backend/src/test/java/com/travelplanner/support/RecordingMailer.java`
-- Test: `backend/src/test/java/com/travelplanner/auth/RegistrationTest.java`
+- Create: `backend/src/test/java/me/luucka/travelplanner/support/RecordingMailer.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/auth/RegistrationTest.java`
 
 **Interfaces:**
 - Produces: `interface Mailer { void send(String to, String subject, String body); }`; `SmtpMailer` (`@Profile("prod")`, uses `JavaMailSender`, from `app.mail-from`), `LoggingMailer` (`@Profile("!prod")`, logs the body). Tests replace it with `RecordingMailer` (`@Primary` test bean) exposing `List<SentMail> sent()` and `String lastLinkTo(String email)` (extracts the URL from the body).
@@ -195,7 +195,7 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Modify: `AuthController.java`, `AuthService.java`; create dto `ResetPasswordRequest`
-- Test: `backend/src/test/java/com/travelplanner/auth/PasswordResetTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/auth/PasswordResetTest.java`
 
 **Interfaces:**
 - Consumes: `AuthTokenService` (Task 4), `RecordingMailer`.
@@ -220,9 +220,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 ### Task 6: Rate limiting
 
 **Files:**
-- Create: `backend/src/main/java/com/travelplanner/auth/RateLimiter.java`
+- Create: `backend/src/main/java/me/luucka/travelplanner/auth/RateLimiter.java`
 - Modify: `AuthController.java` (call the limiter), `support/IntegrationTest.java` (reset limiter in `@BeforeEach`)
-- Test: `backend/src/test/java/com/travelplanner/auth/RateLimitTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/auth/RateLimitTest.java`
 
 **Interfaces:**
 - Produces: `RateLimiter.check(String key, Limit limit)` — throws `ApiException(TOO_MANY_REQUESTS, "RATE_LIMITED", …)`; `enum Limit { LOGIN(10, 15 min), SENSITIVE(5, 1 h) }`; `RateLimiter.reset()` (tests only). Buckets in a Caffeine cache with `expireAfterAccess` equal to the limit window, so unused keys are evicted.
@@ -246,8 +246,8 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `db/migration/V3__trips.sql`
-- Create in `com.travelplanner.trip`: `Trip.java`, `TripRepository.java`, `TripAccess.java`, `TripService.java`, `TripController.java`, dto `TripRequest`, `TripSummary`, `TripDetail`
-- Test: `backend/src/test/java/com/travelplanner/trip/TripApiTest.java`, `backend/src/test/java/com/travelplanner/OwnershipTest.java`
+- Create in `me.luucka.travelplanner.trip`: `Trip.java`, `TripRepository.java`, `TripAccess.java`, `TripService.java`, `TripController.java`, dto `TripRequest`, `TripSummary`, `TripDetail`
+- Test: `backend/src/test/java/me/luucka/travelplanner/trip/TripApiTest.java`, `backend/src/test/java/me/luucka/travelplanner/OwnershipTest.java`
 
 **Interfaces:**
 - Produces: tables `trip(id, owner_id fk → user_account on delete cascade, name, start_date date, end_date date, cover_storage_key text null, created_at, updated_at)`, `trip_destination(trip_id fk → trip on delete cascade, position int, name text, pk(trip_id, position))`; JPA `@ElementCollection @OrderColumn(name="position") List<String> destinations`.
@@ -281,9 +281,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `db/migration/V4__activities.sql`
-- Create in `com.travelplanner.itinerary`: `Activity.java`, `ActivityRepository.java`, `ActivityService.java`, `ActivityController.java`, `MapsLinks.java`, dto `ActivityRequest`, `ActivityResponse`, `ReorderRequest`
+- Create in `me.luucka.travelplanner.itinerary`: `Activity.java`, `ActivityRepository.java`, `ActivityService.java`, `ActivityController.java`, `MapsLinks.java`, dto `ActivityRequest`, `ActivityResponse`, `ReorderRequest`
 - Modify: `TripService.java` (fill `activities` in `TripDetail`), `OwnershipTest.java`
-- Test: `backend/src/test/java/com/travelplanner/itinerary/ActivityApiTest.java`, `MapsLinksTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/itinerary/ActivityApiTest.java`, `MapsLinksTest.java`
 
 **Interfaces:**
 - Consumes: `TripAccess.requireOwned`.
@@ -325,9 +325,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `db/migration/V5__bookings.sql`
-- Create in `com.travelplanner.booking`: `Booking.java`, `BookingType.java`, `BookingRepository.java`, `BookingService.java`, `BookingController.java`, dto `BookingRequest`, `BookingResponse`
+- Create in `me.luucka.travelplanner.booking`: `Booking.java`, `BookingType.java`, `BookingRepository.java`, `BookingService.java`, `BookingController.java`, dto `BookingRequest`, `BookingResponse`
 - Modify: `TripService.java` (fill `bookings`), `OwnershipTest.java`
-- Test: `backend/src/test/java/com/travelplanner/booking/BookingApiTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/booking/BookingApiTest.java`
 
 **Interfaces:**
 - Produces: table `booking(id, trip_id fk on delete cascade, type text, title, provider null, reference null, start_at timestamp not null, end_at timestamp null, origin null, location null, notes null, created_at, updated_at)`.
@@ -355,9 +355,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 ### Task 10: File storage and type detection
 
 **Files:**
-- Create in `com.travelplanner.common.storage`: `FileStorage.java`, `FileTypeDetector.java`, `UnsupportedFileTypeException.java`
+- Create in `me.luucka.travelplanner.common.storage`: `FileStorage.java`, `FileTypeDetector.java`, `UnsupportedFileTypeException.java`
 - Modify: `ApiExceptionHandler.java` (415 for `UnsupportedFileTypeException`, `code: "UNSUPPORTED_FILE_TYPE"`)
-- Test: `backend/src/test/java/com/travelplanner/common/storage/FileTypeDetectorTest.java`, `FileStorageTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/common/storage/FileTypeDetectorTest.java`, `FileStorageTest.java`
 
 **Interfaces:**
 - Produces: `FileTypeDetector.detect(byte[] head): Optional<String>` returning `application/pdf` (`%PDF-`), `image/jpeg` (`FF D8 FF`), `image/png` (`89 50 4E 47 0D 0A 1A 0A`), `image/webp` (`RIFF....WEBP`); reads only the first 12 bytes.
@@ -383,9 +383,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `db/migration/V6__documents.sql`
-- Create in `com.travelplanner.document`: `TripDocument.java`, `TripDocumentRepository.java`, `DocumentService.java`, `DocumentController.java`, dto `DocumentResponse`
+- Create in `me.luucka.travelplanner.document`: `TripDocument.java`, `TripDocumentRepository.java`, `DocumentService.java`, `DocumentController.java`, dto `DocumentResponse`
 - Modify: `TripService.java` (fill `documents`; on trip delete remove document files), `OwnershipTest.java`
-- Test: `backend/src/test/java/com/travelplanner/document/DocumentApiTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/document/DocumentApiTest.java`
 
 **Interfaces:**
 - Consumes: `TripAccess.requireOwned`, `BookingService.requireOwned`, `FileStorage`, `FileTypeDetector`.
@@ -424,7 +424,7 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Modify: `TripController.java`, `TripService.java` (cover endpoints; `coverUrl` in DTOs; delete cover file on trip delete and on replace), `OwnershipTest.java`
-- Test: `backend/src/test/java/com/travelplanner/trip/CoverApiTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/trip/CoverApiTest.java`
 
 **Interfaces:**
 - Produces endpoints: `PUT /api/trips/{id}/cover` (multipart `file`) → 200 `TripSummary`; `GET /api/trips/{id}/cover` → image (same headers as documents, `inline`); `DELETE /api/trips/{id}/cover` → 204.
@@ -450,9 +450,9 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 
 **Files:**
 - Create: `db/migration/V7__checklists.sql`
-- Create in `com.travelplanner.checklist`: `Checklist.java`, `ChecklistItem.java`, `ChecklistRepository.java`, `ChecklistItemRepository.java`, `ChecklistService.java`, `ChecklistController.java`, dto `ChecklistRequest`, `ChecklistResponse`, `ItemRequest`, `ItemPatch`, `ItemResponse`
+- Create in `me.luucka.travelplanner.checklist`: `Checklist.java`, `ChecklistItem.java`, `ChecklistRepository.java`, `ChecklistItemRepository.java`, `ChecklistService.java`, `ChecklistController.java`, dto `ChecklistRequest`, `ChecklistResponse`, `ItemRequest`, `ItemPatch`, `ItemResponse`
 - Modify: `TripService.java` (create defaults on trip creation, fill `checklists`), `OwnershipTest.java`
-- Test: `backend/src/test/java/com/travelplanner/checklist/ChecklistApiTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/checklist/ChecklistApiTest.java`
 
 **Interfaces:**
 - Produces: tables `checklist(id, trip_id fk on delete cascade, name, position, created_at, updated_at)`, `checklist_item(id, checklist_id fk on delete cascade, text, done boolean default false, position, created_at, updated_at)`.
@@ -481,10 +481,10 @@ The test controller needs an authenticated request: use `with(user("x"))` from s
 ### Task 14: Serving the PWA and security headers
 
 **Files:**
-- Create: `backend/src/main/java/com/travelplanner/web/SpaWebConfig.java`
+- Create: `backend/src/main/java/me/luucka/travelplanner/web/SpaWebConfig.java`
 - Modify: `SecurityConfig.java` (headers)
 - Create: `backend/src/test/resources/static/index.html`, `static/sw.js`, `static/assets/app-abc123.js` (tiny fixtures)
-- Test: `backend/src/test/java/com/travelplanner/web/SpaServingTest.java`
+- Test: `backend/src/test/java/me/luucka/travelplanner/web/SpaServingTest.java`
 
 **Interfaces:**
 - Produces: non-`/api` GET requests for missing resources return `index.html`; `/api/**` misses stay 404 JSON.
