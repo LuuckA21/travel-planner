@@ -6,6 +6,9 @@ spring:
   session:
     jdbc:
       initialize-schema: never
+  mvc:
+    problemdetails:
+      enabled: true
   servlet:
     multipart:
       max-file-size: 25MB
