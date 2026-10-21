@@ -51,6 +51,14 @@ public class Booking {
         update(r);
     }
 
+    public UUID getId() {
+        return id;
+    }
+
+    public Trip getTrip() {
+        return trip;
+    }
+
     void update(BookingRequest r) {
         this.type = r.type();
         this.title = r.title();
