@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from './client'
-import type { Activity, Booking, BookingType, TripDetail, TripSummary } from './types'
+import type { Activity, Booking, BookingType, DocumentMeta, TripDetail, TripSummary } from './types'
 
 export interface TripInput {
   name: string
@@ -124,6 +124,27 @@ export function useDeleteBooking(tripId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFetch<void>(`/bookings/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useUploadDocument(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, bookingId }: { file: Blob; bookingId?: string }) => {
+      const form = new FormData()
+      form.append('file', file, file instanceof File ? file.name : 'document')
+      if (bookingId) form.append('bookingId', bookingId)
+      return apiUpload<DocumentMeta>(`/trips/${tripId}/documents`, form)
+    },
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useDeleteDocument(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/documents/${id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateTrip(qc, tripId),
   })
 }

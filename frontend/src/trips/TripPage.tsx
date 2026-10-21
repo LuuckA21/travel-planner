@@ -6,17 +6,18 @@ import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import { daysUntil, dayNumber, formatDateRange, todayLocal, tripStatus } from '../lib/dates'
 import BookingsTab from './BookingsTab'
+import DocumentsTab from './DocumentsTab'
 import ItineraryTab from './ItineraryTab'
 import SummaryTab from './SummaryTab'
 
-// Tasks 22-23 replace these placeholders.
+// Task 23 replaces this placeholder.
 const Soon = () => <Text c="dimmed">{m.trip.comingSoon}</Text>
 
 const tabs = {
   summary: SummaryTab,
   itinerary: ItineraryTab,
   bookings: BookingsTab,
-  documents: Soon,
+  documents: DocumentsTab,
   checklists: Soon,
 } satisfies Record<string, ComponentType<{ trip: TripDetail }>>
 

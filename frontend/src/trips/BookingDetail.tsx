@@ -6,6 +6,7 @@ import { m } from '../i18n/it'
 import { bookingIcon } from '../lib/bookings'
 import { formatDateTime } from '../lib/dates'
 import BookingForm from './BookingForm'
+import DocumentUploadButton from './DocumentUploadButton'
 
 const t = m.bookings
 
@@ -55,6 +56,7 @@ export default function BookingDetail() {
           {documents.map((d) => (
             <Anchor key={d.id} href={d.fileUrl} target="_blank" rel="noopener">{d.filename}</Anchor>
           ))}
+          <DocumentUploadButton tripId={trip.data.id} bookingId={booking.id} />
         </Stack>
       </Stack>
       <Modal opened={editing} onClose={() => setEditing(false)} title={t.editTitle}>

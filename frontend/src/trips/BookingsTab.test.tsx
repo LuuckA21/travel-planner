@@ -72,6 +72,7 @@ test('detail shows all fields and only the documents attached to this booking', 
   for (const text of ['ITA', 'XYZ', 'Roma', 'Tokyo', 'Bagaglio extra']) expect(screen.getByText(text)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'biglietto.pdf' })).toHaveAttribute('href', '/files/d1')
   expect(screen.queryByText('altro.pdf')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: m.documents.upload })).toBeInTheDocument()
 })
 
 test('detail redirects to the bookings tab when the booking does not exist', async () => {

@@ -85,6 +85,18 @@ export const m = {
     delete: 'Elimina',
     deleteConfirm: 'Conferma eliminazione',
   },
+  documents: {
+    empty: 'Nessun documento.',
+    upload: 'Carica documento',
+    open: 'Apri',
+    download: 'Scarica',
+    delete: 'Elimina',
+    deleteConfirm: 'Conferma eliminazione',
+    offline: 'Rendi disponibili offline',
+    unsupportedType:
+      'Formato non supportato. Puoi caricare file PDF, JPEG, PNG o WebP. Se è una foto di iPhone, esportala in JPEG (Impostazioni > Fotocamera > Formati > Più compatibile).',
+    tooLarge: 'Il file è troppo grande (massimo 25 MB).',
+  },
   dashboard: {
     title: 'I miei viaggi',
     newTrip: 'Nuovo viaggio',
