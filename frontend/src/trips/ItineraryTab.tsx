@@ -1,4 +1,4 @@
-import { ActionIcon, Anchor, Button, Card, Group, Modal, Stack, Text, Title } from '@mantine/core'
+import { ActionIcon, Alert, Anchor, Button, Card, Group, Modal, Stack, Text, Title } from '@mantine/core'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useReorderActivities } from '../api/queries'
@@ -71,6 +71,7 @@ export default function ItineraryTab({ trip }: { trip: TripDetail }) {
 
   return (
     <Stack>
+      {reorder.isError && <Alert color="red" role="alert">{t.reorderError}</Alert>}
       {days.map((day) => (
         <Stack component="section" key={day.date} id={`day-${day.date}`} gap="xs" style={{ scrollMarginTop: 8 }}>
           <Title order={2} size="h4">{formatDayHeader(day.date, day.dayNumber)}</Title>
@@ -92,7 +93,7 @@ export default function ItineraryTab({ trip }: { trip: TripDetail }) {
               onEdit={() => setEditing({ date: day.date, activity: a })}
             />
           ))}
-          <Button variant="subtle" size="xs" style={{ alignSelf: 'flex-start' }} onClick={() => setEditing({ date: day.date })}>{t.add}</Button>
+          <Button variant="subtle" size="xs" style={{ alignSelf: 'flex-start' }} aria-label={`${t.add} – ${formatDayHeader(day.date, day.dayNumber)}`} onClick={() => setEditing({ date: day.date })}>{t.add}</Button>
         </Stack>
       ))}
       {outside.length > 0 && (

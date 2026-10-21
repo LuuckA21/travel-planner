@@ -92,6 +92,24 @@ test('move down sends reordered ids for that day', async () => {
   })
 })
 
+test('move up on a middle item swaps it with the previous one', async () => {
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderTab(trip({ activities: [act('a', '2027-03-10', 1), act('b', '2027-03-10', 2), act('c', '2027-03-10', 3)] }))
+  await user.click(screen.getByRole('button', { name: `${m.itinerary.moveUp}: Attività b` }))
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+  expect(lastCall().body).toEqual({ date: '2027-03-10', activityIds: ['b', 'a', 'c'] })
+})
+
+test('shows an error when reordering fails and clears it on the next attempt', async () => {
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+  renderTab(trip({ activities: [act('a', '2027-03-10', 1), act('b', '2027-03-10', 2)] }))
+  await user.click(screen.getByRole('button', { name: `${m.itinerary.moveDown}: Attività a` }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(m.itinerary.reorderError)
+  await user.click(screen.getByRole('button', { name: `${m.itinerary.moveDown}: Attività a` }))
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+})
+
 test('first item has move-up disabled and last has move-down disabled', () => {
   renderTab(trip({ activities: [act('a', '2027-03-10', 1), act('b', '2027-03-10', 2)] }))
   expect(screen.getByRole('button', { name: `${m.itinerary.moveUp}: Attività a` })).toBeDisabled()
@@ -141,7 +159,7 @@ test('add activity opens the form with the date prefilled and posts it', async (
   fetchMock.mockResolvedValue(new Response('{}', { status: 201 }))
   renderTab(trip())
   const day2 = screen.getByRole('heading', { name: 'Gio 11 mar · Giorno 2' }).closest('section')!
-  await user.click(within(day2).getByRole('button', { name: m.itinerary.add }))
+  await user.click(within(day2).getByRole('button', { name: `${m.itinerary.add} – Gio 11 mar · Giorno 2` }))
   expect(await screen.findByLabelText(new RegExp(`^${m.itinerary.date}`))).toHaveValue('2027-03-11')
   await user.type(screen.getByLabelText(new RegExp(`^${m.itinerary.title}`)), 'Cena')
   await user.type(screen.getByLabelText(m.itinerary.time), '20:30')
@@ -159,7 +177,7 @@ test('shows field errors from the server and keeps the form open', async () => {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ errors: { mapsUrl: 'deve iniziare con https://' } }), { status: 400 }))
   renderTab(trip())
-  await user.click(screen.getAllByRole('button', { name: m.itinerary.add })[0])
+  await user.click(screen.getByRole('button', { name: `${m.itinerary.add} – Mer 10 mar · Giorno 1` }))
   await user.type(await screen.findByLabelText(new RegExp(`^${m.itinerary.title}`)), 'Cena')
   await user.type(screen.getByLabelText(m.itinerary.mapsUrl), 'http://x')
   await user.click(screen.getByRole('button', { name: m.itinerary.save }))

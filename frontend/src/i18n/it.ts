@@ -47,6 +47,7 @@ export const m = {
     moveUp: 'Sposta su',
     moveDown: 'Sposta giù',
     openMap: 'Apri in Maps',
+    reorderError: 'Impossibile spostare l’attività. Riprova.',
     newTitle: 'Nuova attività',
     editTitle: 'Modifica attività',
     date: 'Data',
