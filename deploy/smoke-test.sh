@@ -76,5 +76,5 @@ done
 echo "SMOKE OK"
 if [ -n "$KEEP" ]; then
   echo "Stack kept running at $BASE"
-  echo "Stop it with: docker compose -p $PROJECT --env-file $ENV_FILE -f $PWD/docker-compose.yml down -v"
+  echo "Stop it with: ENV_FILE=$ENV_FILE docker compose -p $PROJECT --env-file $ENV_FILE -f $PWD/docker-compose.yml down -v"
 fi
