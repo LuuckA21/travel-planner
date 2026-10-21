@@ -4,3 +4,5 @@ dist/
 deploy/.env
 deploy/backup.env
 backend/data/
+test-results/
+playwright-report/

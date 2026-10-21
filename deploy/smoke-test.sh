@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # Builds the production image, boots it with a throwaway database and exercises it over HTTP.
+# --keep leaves the stack running (smoke@example.it / supersecret1) for the e2e tests; set SMOKE_DIR to choose
+# where its env file lives, so the stack can be stopped later (the command is printed).
 set -euo pipefail
 cd "$(dirname "$0")"
+
+KEEP=
+case "${1:-}" in
+  --keep) KEEP=1 ;;
+  '') ;;
+  *) echo "usage: $0 [--keep]" >&2; exit 2 ;;
+esac
 
 PROJECT=tp-smoke
 PORT=8081
 BASE=http://127.0.0.1:$PORT
-WORK=$(mktemp -d)
+WORK=${SMOKE_DIR:-$(mktemp -d)}
+mkdir -p "$WORK"
 export ENV_FILE=$WORK/env
 
 sed -e 's/^APP_BIND_IP=.*/APP_BIND_IP=127.0.0.1/' \
@@ -16,7 +26,11 @@ sed -e 's/^APP_BIND_IP=.*/APP_BIND_IP=127.0.0.1/' \
     .env.example > "$ENV_FILE"
 
 dc() { docker compose -p "$PROJECT" --env-file "$ENV_FILE" "$@"; }
-cleanup() { dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$WORK"; }
+cleanup() {
+  local rc=$?
+  [ -n "$KEEP" ] && [ $rc -eq 0 ] && return # kept only after a fully successful run
+  dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$WORK"
+}
 trap cleanup EXIT
 fail() { echo "SMOKE FAIL: $*" >&2; dc logs --tail 60 app >&2 || true; exit 1; }
 
@@ -60,3 +74,7 @@ done
 [ "$code" = 429 ] || fail "6th forgot-password request returned $code, expected 429"
 
 echo "SMOKE OK"
+if [ -n "$KEEP" ]; then
+  echo "Stack kept running at $BASE"
+  echo "Stop it with: docker compose -p $PROJECT --env-file $ENV_FILE -f $PWD/docker-compose.yml down -v"
+fi
