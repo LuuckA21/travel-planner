@@ -93,6 +93,8 @@ export const m = {
     delete: 'Elimina',
     deleteConfirm: 'Conferma eliminazione',
     offline: 'Rendi disponibili offline',
+    offlineDone: (ok: number, failed: number) =>
+      failed ? `${ok} file disponibili offline, ${failed} non riusciti` : `${ok} file disponibili offline`,
     unsupportedType:
       'Formato non supportato. Puoi caricare file PDF, JPEG, PNG o WebP. Se è una foto di iPhone, esportala in JPEG (Impostazioni > Fotocamera > Formati > Più compatibile).',
     tooLarge: 'Il file è troppo grande (massimo 25 MB).',
@@ -110,6 +112,13 @@ export const m = {
     editItem: 'Modifica voce',
     deleteItem: 'Elimina voce',
     progress: 'Avanzamento',
+  },
+  offline: {
+    banner: (time?: string) => (time ? `Sei offline · dati aggiornati alle ${time}` : 'Sei offline'),
+  },
+  pwa: {
+    updateAvailable: 'Nuova versione disponibile',
+    update: 'Aggiorna',
   },
   dashboard: {
     title: 'I miei viaggi',

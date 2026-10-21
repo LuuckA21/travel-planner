@@ -5,12 +5,14 @@ import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import { bookingIcon } from '../lib/bookings'
 import { formatDateTime } from '../lib/dates'
+import { useOnline } from '../offline/useOnline'
 import BookingForm from './BookingForm'
 
 const t = m.bookings
 
 export default function BookingsTab({ trip }: { trip: TripDetail }) {
   const [adding, setAdding] = useState(false)
+  const online = useOnline()
   const bookings = [...trip.bookings].sort((a, b) => a.startAt.localeCompare(b.startAt))
 
   return (
@@ -27,7 +29,7 @@ export default function BookingsTab({ trip }: { trip: TripDetail }) {
           </Group>
         </Card>
       ))}
-      <Button variant="light" style={{ alignSelf: 'flex-start' }} onClick={() => setAdding(true)}>{t.add}</Button>
+      <Button variant="light" style={{ alignSelf: 'flex-start' }} disabled={!online} onClick={() => setAdding(true)}>{t.add}</Button>
       <Modal opened={adding} onClose={() => setAdding(false)} title={t.newTitle}>
         <BookingForm tripId={trip.id} onDone={() => setAdding(false)} />
       </Modal>

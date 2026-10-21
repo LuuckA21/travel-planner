@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import type { NavigateFunction } from 'react-router'
 import { ApiError, apiFetch } from '../api/client'
 import type { Me } from '../api/types'
-import { clearOfflineData } from '../offline/persistence'
+import { claimOfflineData, clearOfflineData } from '../offline/persistence'
 
 export type MeStatus = 'loading' | 'authenticated' | 'anonymous' | 'offline'
 
@@ -16,6 +16,12 @@ export function useMe(): { me?: Me; status: MeStatus } {
   useEffect(() => {
     if (expired) void clearOfflineData(queryClient)
   }, [expired, queryClient])
+  const userId = q.data?.id
+  // Another user's data may still be cached (restored, or left over before this login): wipe it and reload,
+  // so no mounted screen keeps showing it.
+  useEffect(() => {
+    if (userId) void claimOfflineData(queryClient, userId).then((wiped) => wiped && window.location.reload())
+  }, [userId, queryClient])
   // A 401 wins over cached data; any other failure keeps the last known user.
   if (expired) return { status: 'anonymous' }
   if (q.error) return { me: q.data, status: 'offline' }

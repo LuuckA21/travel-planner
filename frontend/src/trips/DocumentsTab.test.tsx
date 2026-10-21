@@ -57,9 +57,17 @@ test('lists documents with size, booking title, open and download links', () => 
   expect(screen.getAllByRole('link', { name: new RegExp(t.download) })[0]).toHaveAttribute('href', '/api/documents/d1/file?download=true')
 })
 
-test('offline button is a disabled placeholder', () => {
-  renderTab(trip())
-  expect(screen.getByRole('button', { name: t.offline })).toBeDisabled()
+test('make available offline stores every file and the cover, then shows the result', async () => {
+  const add = vi.fn(async (url: string) => {
+    if (url.includes('d2')) throw new TypeError('Failed to fetch')
+  })
+  const open = vi.fn(async () => ({ add }))
+  vi.stubGlobal('caches', { open })
+  renderTab(trip({ coverUrl: '/api/trips/t1/cover?v=3', documents: [doc('d1'), doc('d2')] }))
+  await userEvent.setup().click(screen.getByRole('button', { name: t.offline }))
+  expect(await screen.findByText(t.offlineDone(2, 1))).toBeInTheDocument()
+  expect(open).toHaveBeenCalledWith('documents')
+  expect(add.mock.calls.map(([url]) => url).sort()).toEqual(['/api/documents/d1/file', '/api/documents/d2/file', '/api/trips/t1/cover?v=3'])
 })
 
 test('delete needs a second click, then calls the API', async () => {

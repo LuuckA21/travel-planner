@@ -6,6 +6,7 @@ import { useDeleteCover, useDeleteTrip, useSaveTrip, useTrip, useUploadCover } f
 import type { TripDetail } from '../api/types'
 import { compressImage } from '../lib/images'
 import { m } from '../i18n/it'
+import { useOnline } from '../offline/useOnline'
 
 const t = m.tripForm
 
@@ -24,6 +25,7 @@ function TripForm({ trip }: { trip?: TripDetail }) {
   const upload = useUploadCover()
   const deleteCover = useDeleteCover()
   const del = useDeleteTrip()
+  const online = useOnline()
 
   const fields = error instanceof ApiError ? (error.fieldErrors ?? {}) : {}
   const destinationError = Object.entries(fields).find(([k]) => k.startsWith('destinations'))?.[1]
@@ -101,15 +103,15 @@ function TripForm({ trip }: { trip?: TripDetail }) {
           </Group>
           <FileInput label={t.cover} accept="image/jpeg,image/png,image/webp" clearable value={cover} onChange={setCover} />
           {trip?.coverUrl && !cover && !removeCover && (
-            <Button variant="subtle" color="red" size="xs" style={{ alignSelf: 'flex-start' }} onClick={() => setRemoveCover(true)}>
+            <Button variant="subtle" color="red" size="xs" style={{ alignSelf: 'flex-start' }} disabled={!online} onClick={() => setRemoveCover(true)}>
               {t.removeCover}
             </Button>
           )}
           <Group justify="space-between">
-            {trip ? <Button variant="outline" color="red" onClick={() => setConfirmDelete(true)}>{t.delete}</Button> : <span />}
+            {trip ? <Button variant="outline" color="red" disabled={!online} onClick={() => setConfirmDelete(true)}>{t.delete}</Button> : <span />}
             <Group>
               <Button component={Link} to="/" variant="default">{t.cancel}</Button>
-              <Button type="submit" loading={busy}>{t.save}</Button>
+              <Button type="submit" loading={busy} disabled={!online}>{t.save}</Button>
             </Group>
           </Group>
         </Stack>
@@ -119,7 +121,7 @@ function TripForm({ trip }: { trip?: TripDetail }) {
           <Text>{t.deleteBody}</Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setConfirmDelete(false)}>{t.cancel}</Button>
-            <Button color="red" loading={del.isPending} onClick={remove}>{t.deleteConfirm}</Button>
+            <Button color="red" loading={del.isPending} disabled={!online} onClick={remove}>{t.deleteConfirm}</Button>
           </Group>
         </Stack>
       </Modal>

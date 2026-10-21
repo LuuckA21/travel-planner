@@ -4,6 +4,7 @@ import { ApiError, NetworkError } from '../api/client'
 import { useDeleteBooking, useSaveBooking } from '../api/queries'
 import type { Booking, BookingType } from '../api/types'
 import { m } from '../i18n/it'
+import { useOnline } from '../offline/useOnline'
 
 const t = m.bookings
 
@@ -28,6 +29,7 @@ export default function BookingForm({ tripId, booking, onDone }: Props) {
   const [notes, setNotes] = useState(booking?.notes ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<unknown>()
+  const online = useOnline()
   const save = useSaveBooking(tripId)
   const del = useDeleteBooking(tripId)
 
@@ -86,6 +88,7 @@ export default function BookingForm({ tripId, booking, onDone }: Props) {
               variant="outline"
               color="red"
               loading={del.isPending}
+              disabled={!online}
               onClick={confirmDelete ? () => void run(() => del.mutateAsync(booking.id)) : () => setConfirmDelete(true)}
             >
               {confirmDelete ? t.deleteConfirm : t.delete}
@@ -95,7 +98,7 @@ export default function BookingForm({ tripId, booking, onDone }: Props) {
           )}
           <Group>
             <Button variant="default" onClick={onDone}>{t.cancel}</Button>
-            <Button type="submit" loading={save.isPending}>{t.save}</Button>
+            <Button type="submit" loading={save.isPending} disabled={!online}>{t.save}</Button>
           </Group>
         </Group>
       </Stack>

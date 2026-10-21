@@ -4,6 +4,7 @@ import { ApiError, NetworkError } from '../api/client'
 import { useDeleteActivity, useSaveActivity } from '../api/queries'
 import type { Activity } from '../api/types'
 import { m } from '../i18n/it'
+import { useOnline } from '../offline/useOnline'
 
 const t = m.itinerary
 
@@ -24,6 +25,7 @@ export default function ActivityForm({ tripId, activity, date, onDone }: Props) 
   const [notes, setNotes] = useState(activity?.notes ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<unknown>()
+  const online = useOnline()
   const save = useSaveActivity(tripId)
   const del = useDeleteActivity(tripId)
 
@@ -76,6 +78,7 @@ export default function ActivityForm({ tripId, activity, date, onDone }: Props) 
               variant="outline"
               color="red"
               loading={del.isPending}
+              disabled={!online}
               onClick={confirmDelete ? () => void run(() => del.mutateAsync(activity.id)) : () => setConfirmDelete(true)}
             >
               {confirmDelete ? t.deleteConfirm : t.delete}
@@ -85,7 +88,7 @@ export default function ActivityForm({ tripId, activity, date, onDone }: Props) 
           )}
           <Group>
             <Button variant="default" onClick={onDone}>{t.cancel}</Button>
-            <Button type="submit" loading={save.isPending}>{t.save}</Button>
+            <Button type="submit" loading={save.isPending} disabled={!online}>{t.save}</Button>
           </Group>
         </Group>
       </Stack>

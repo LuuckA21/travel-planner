@@ -1,3 +1,5 @@
+import { reportReachable } from '../offline/useOnline'
+
 export class ApiError extends Error {
   status: number
   code?: string
@@ -33,8 +35,10 @@ async function send<T>(path: string, init: RequestInit, headers: Headers): Promi
   try {
     res = await fetch(`/api${path}`, { ...init, headers, credentials: 'same-origin' })
   } catch {
+    reportReachable(false)
     throw new NetworkError()
   }
+  reportReachable(true)
 
   if (!res.ok) {
     const problem = await res.json().catch(() => ({}))

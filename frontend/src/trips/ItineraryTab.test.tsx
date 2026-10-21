@@ -102,7 +102,8 @@ test('move up on a middle item swaps it with the previous one', async () => {
 
 test('shows an error when reordering fails and clears it on the next attempt', async () => {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+  // A server error, not a network one: after a NetworkError the controls stay disabled until a request succeeds.
+  fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }))
   renderTab(trip({ activities: [act('a', '2027-03-10', 1), act('b', '2027-03-10', 2)] }))
   await user.click(screen.getByRole('button', { name: `${m.itinerary.moveDown}: Attività a` }))
   expect(await screen.findByRole('alert')).toHaveTextContent(m.itinerary.reorderError)

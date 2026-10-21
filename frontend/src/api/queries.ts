@@ -11,8 +11,10 @@ export interface TripInput {
 
 export const useTrips = () => useQuery({ queryKey: ['trips'], queryFn: () => apiFetch<TripSummary[]>('/trips') })
 
-export const useTrip = (id: string | undefined) =>
-  useQuery({ queryKey: ['trip', id], queryFn: () => apiFetch<TripDetail>(`/trips/${id}`), enabled: !!id })
+// Shared with the dashboard prefetch.
+export const tripQuery = (id: string | undefined) => ({ queryKey: ['trip', id], queryFn: () => apiFetch<TripDetail>(`/trips/${id}`) })
+
+export const useTrip = (id: string | undefined) => useQuery({ ...tripQuery(id), enabled: !!id })
 
 const invalidateTrip = (qc: QueryClient, id: string) =>
   Promise.all([qc.invalidateQueries({ queryKey: ['trips'] }), qc.invalidateQueries({ queryKey: ['trip', id] })])

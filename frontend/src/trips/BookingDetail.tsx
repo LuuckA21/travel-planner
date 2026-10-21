@@ -5,6 +5,7 @@ import { useTrip } from '../api/queries'
 import { m } from '../i18n/it'
 import { bookingIcon } from '../lib/bookings'
 import { formatDateTime } from '../lib/dates'
+import { useOnline } from '../offline/useOnline'
 import BookingForm from './BookingForm'
 import DocumentUploadButton from './DocumentUploadButton'
 
@@ -14,6 +15,7 @@ export default function BookingDetail() {
   const { id, bookingId } = useParams()
   const trip = useTrip(id)
   const [editing, setEditing] = useState(false)
+  const online = useOnline()
 
   // Check data first: a failed background refetch must not replace content.
   if (!trip.data) return trip.isError ? <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert> : <Loader m="md" />
@@ -40,7 +42,7 @@ export default function BookingDetail() {
           <Title order={1}>
             <span role="img" aria-label={t.types[booking.type]}>{bookingIcon[booking.type]}</span> {booking.title}
           </Title>
-          <Button variant="default" size="xs" onClick={() => setEditing(true)}>{t.edit}</Button>
+          <Button variant="default" size="xs" disabled={!online} onClick={() => setEditing(true)}>{t.edit}</Button>
         </Group>
         {rows.map(([label, value]) =>
           value ? (

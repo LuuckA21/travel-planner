@@ -6,6 +6,7 @@ import type { Activity, TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import { formatDayHeader, todayLocal, tripStatus } from '../lib/dates'
 import { groupByDay } from '../lib/itinerary'
+import { useOnline } from '../offline/useOnline'
 import ActivityForm from './ActivityForm'
 
 const t = m.itinerary
@@ -15,10 +16,11 @@ interface Editing {
   activity?: Activity
 }
 
-function ActivityRow({ activity, move, onEdit }: {
+function ActivityRow({ activity, move, onEdit, offline }: {
   activity: Activity
   move?: { up: boolean; down: boolean; disabled: boolean; onMove: (delta: -1 | 1) => void }
   onEdit: () => void
+  offline: boolean
 }) {
   return (
     <Card withBorder padding="sm">
@@ -41,7 +43,7 @@ function ActivityRow({ activity, move, onEdit }: {
               <ActionIcon variant="default" size={36} aria-label={`${t.moveDown}: ${activity.title}`} disabled={!move.down || move.disabled} onClick={() => move.onMove(1)}>↓</ActionIcon>
             </>
           )}
-          <Button variant="subtle" size="xs" aria-label={`${t.edit}: ${activity.title}`} onClick={onEdit}>{t.edit}</Button>
+          <Button variant="subtle" size="xs" disabled={offline} aria-label={`${t.edit}: ${activity.title}`} onClick={onEdit}>{t.edit}</Button>
         </Group>
       </Group>
     </Card>
@@ -52,6 +54,7 @@ export default function ItineraryTab({ trip }: { trip: TripDetail }) {
   const [params] = useSearchParams()
   const [editing, setEditing] = useState<Editing>()
   const reorder = useReorderActivities(trip.id)
+  const offline = !useOnline()
   const { days, outside } = groupByDay(trip)
 
   // Fixed at mount: scroll to ?day=, or to today while the trip is in progress.
@@ -87,13 +90,14 @@ export default function ItineraryTab({ trip }: { trip: TripDetail }) {
               move={{
                 up: i > 0,
                 down: i < day.activities.length - 1,
-                disabled: reorder.isPending,
+                disabled: reorder.isPending || offline,
                 onMove: (delta) => move(day.date, day.activities, i, delta),
               }}
               onEdit={() => setEditing({ date: day.date, activity: a })}
+              offline={offline}
             />
           ))}
-          <Button variant="subtle" size="xs" style={{ alignSelf: 'flex-start' }} aria-label={`${t.add} – ${formatDayHeader(day.date, day.dayNumber)}`} onClick={() => setEditing({ date: day.date })}>{t.add}</Button>
+          <Button variant="subtle" size="xs" style={{ alignSelf: 'flex-start' }} disabled={offline} aria-label={`${t.add} – ${formatDayHeader(day.date, day.dayNumber)}`} onClick={() => setEditing({ date: day.date })}>{t.add}</Button>
         </Stack>
       ))}
       {outside.length > 0 && (
@@ -102,7 +106,7 @@ export default function ItineraryTab({ trip }: { trip: TripDetail }) {
           {outside.map((a) => (
             <Stack key={a.id} gap={2}>
               <Text size="xs" c="dimmed">{formatDayHeader(a.date)}</Text>
-              <ActivityRow activity={a} onEdit={() => setEditing({ date: a.date, activity: a })} />
+              <ActivityRow activity={a} onEdit={() => setEditing({ date: a.date, activity: a })} offline={offline} />
             </Stack>
           ))}
         </Stack>

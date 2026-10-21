@@ -5,6 +5,8 @@ import { useDeleteDocument } from '../api/queries'
 import type { DocumentMeta, TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import { formatSize } from '../lib/documents'
+import { makeTripOffline } from '../offline/documentsCache'
+import { useOnline } from '../offline/useOnline'
 import DocumentUploadButton from './DocumentUploadButton'
 
 const t = m.documents
@@ -13,6 +15,7 @@ function DocumentRow({ tripId, doc, bookingTitle }: { tripId: string; doc: Docum
   const [confirm, setConfirm] = useState(false)
   const [error, setError] = useState<unknown>()
   const del = useDeleteDocument(tripId)
+  const online = useOnline()
 
   const remove = async () => {
     setError(undefined)
@@ -34,7 +37,7 @@ function DocumentRow({ tripId, doc, bookingTitle }: { tripId: string; doc: Docum
         </Stack>
         <Group>
           <Anchor href={`${doc.fileUrl}?download=true`} size="sm" aria-label={`${t.download} ${doc.filename}`}>{t.download}</Anchor>
-          <Button variant="subtle" color="red" size="compact-sm" loading={del.isPending} onClick={confirm ? () => void remove() : () => setConfirm(true)}>
+          <Button variant="subtle" color="red" size="compact-sm" loading={del.isPending} disabled={!online} onClick={confirm ? () => void remove() : () => setConfirm(true)}>
             {confirm ? t.deleteConfirm : t.delete}
           </Button>
         </Group>
@@ -45,6 +48,22 @@ function DocumentRow({ tripId, doc, bookingTitle }: { tripId: string; doc: Docum
 
 export default function DocumentsTab({ trip }: { trip: TripDetail }) {
   const titles = new Map(trip.bookings.map((b) => [b.id, b.title]))
+  const online = useOnline()
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState<string>()
+
+  const saveOffline = async () => {
+    setSaving(true)
+    setSaved(undefined)
+    try {
+      const { ok, failed } = await makeTripOffline(trip)
+      setSaved(t.offlineDone(ok, failed))
+    } catch {
+      setSaved(m.common.genericError)
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <Stack>
       {trip.documents.length === 0 && <Text c="dimmed">{t.empty}</Text>}
@@ -53,9 +72,9 @@ export default function DocumentsTab({ trip }: { trip: TripDetail }) {
       ))}
       <Group>
         <DocumentUploadButton tripId={trip.id} />
-        {/* Wired in Task 24. */}
-        <Button variant="default" disabled>{t.offline}</Button>
+        <Button variant="default" loading={saving} disabled={!online} onClick={() => void saveOffline()}>{t.offline}</Button>
       </Group>
+      {saved && <Text size="sm" role="status">{saved}</Text>}
     </Stack>
   )
 }

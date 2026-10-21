@@ -4,10 +4,11 @@ import { NetworkError } from '../api/client'
 import { useAddItem, useDeleteChecklist, useDeleteItem, usePatchItem, useSaveChecklist } from '../api/queries'
 import type { Checklist, ChecklistItem, TripDetail } from '../api/types'
 import { m } from '../i18n/it'
+import { useOnline } from '../offline/useOnline'
 
 const t = m.checklists
 
-// One flag drives every mutating control (Task 24 wires it to the online state).
+// One flag drives every mutating control: they are disabled offline.
 interface Ctl {
   tripId: string
   disabled: boolean
@@ -160,7 +161,7 @@ function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail' | 'clear'> &
 }
 
 export default function ChecklistsTab({ trip }: { trip: TripDetail }) {
-  const disabled = false
+  const disabled = !useOnline()
   const [name, setName] = useState('')
   const [error, setError] = useState<unknown>()
   const save = useSaveChecklist(trip.id)

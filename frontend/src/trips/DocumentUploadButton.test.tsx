@@ -85,3 +85,14 @@ test('compresses images but keeps the original filename', async () => {
   expect(file.name).toBe('scontrino.png')
   expect(file.size).toBe(5)
 })
+
+test('the same file can be picked again after a failure', async () => {
+  fetchMock.mockResolvedValueOnce(problem(500, 'X')).mockResolvedValueOnce(new Response(JSON.stringify({ id: 'd1' }), { status: 201 }))
+  const input = renderButton()
+  const user = userEvent.setup()
+  const file = new File(['x'], 'a.pdf', { type: 'application/pdf' })
+  await user.upload(input, file)
+  expect(await screen.findByRole('alert')).toHaveTextContent(m.common.genericError)
+  await user.upload(input, file)
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+})

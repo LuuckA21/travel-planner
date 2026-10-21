@@ -27,7 +27,7 @@ const trips = [
 ]
 
 function renderDashboard(list: TripSummary[] = trips) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(list), { status: 200 })))
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(list), { status: 200 })))
   render(
     <MantineProvider>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -57,6 +57,14 @@ test('groups trips into in progress, upcoming and past in the right order', asyn
   expect(names(inProgress)).toEqual(['Trip now'])
   expect(names(screen.getByRole('region', { name: m.dashboard.upcoming }))).toEqual(['Trip up-soon', 'Trip up-late'])
   expect(names(screen.getByRole('region', { name: m.dashboard.past }))).toEqual(['Trip past-new', 'Trip past-old'])
+})
+
+test('prefetches in-progress and upcoming trips for offline use, not past ones', async () => {
+  renderDashboard()
+  await screen.findByRole('region', { name: m.dashboard.inProgress })
+  const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+  expect(fetchMock.mock.calls.map(([url]) => url).sort()).toEqual(['/api/trips', '/api/trips/now', '/api/trips/up-late', '/api/trips/up-soon'])
 })
 
 test('Today button links to current day', async () => {

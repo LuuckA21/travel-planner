@@ -1,6 +1,6 @@
 import { MantineProvider } from '@mantine/core'
 import '@mantine/core/styles.css'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import ForgotPasswordPage from './auth/ForgotPasswordPage'
 import LoginPage from './auth/LoginPage'
@@ -8,6 +8,9 @@ import RequireAuth from './auth/RequireAuth'
 import ResetPasswordPage from './auth/ResetPasswordPage'
 import SignupPage from './auth/SignupPage'
 import VerifyEmailPage from './auth/VerifyEmailPage'
+import OfflineBanner from './offline/OfflineBanner'
+import { persistOptions } from './offline/persistence'
+import UpdatePrompt from './offline/UpdatePrompt'
 import { queryClient } from './queryClient'
 import DashboardPage from './trips/DashboardPage'
 import BookingDetail from './trips/BookingDetail'
@@ -17,7 +20,9 @@ import TripPage from './trips/TripPage'
 export default function App() {
   return (
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+        <UpdatePrompt />
+        <OfflineBanner />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -34,7 +39,7 @@ export default function App() {
             </Route>
           </Routes>
         </BrowserRouter>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </MantineProvider>
   )
 }

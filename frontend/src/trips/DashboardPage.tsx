@@ -1,13 +1,14 @@
 import { Alert, Button, Container, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import { NetworkError } from '../api/client'
-import { useTrips } from '../api/queries'
+import { tripQuery, useTrips } from '../api/queries'
 import type { TripSummary } from '../api/types'
 import { logout } from '../auth/useMe'
 import { todayLocal, tripStatus } from '../lib/dates'
 import { m } from '../i18n/it'
+import { useOnline } from '../offline/useOnline'
 import TripCard from './TripCard'
 
 function Section({ title, trips, today }: { title: string; trips: TripSummary[]; today?: string }) {
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [logoutError, setLogoutError] = useState<string>()
+  const online = useOnline()
   const today = todayLocal()
 
   const signOut = () =>
@@ -37,6 +39,12 @@ export default function DashboardPage() {
   const inProgress = by('inProgress')
   const upcoming = by('upcoming').sort((a, b) => a.startDate.localeCompare(b.startDate))
   const past = by('past').sort((a, b) => b.endDate.localeCompare(a.endDate))
+
+  // Fetch every in-progress and upcoming trip in full, so it is cached for offline use without being opened.
+  useEffect(() => {
+    if (!online || !trips.data) return
+    for (const t of trips.data) if (tripStatus(t, todayLocal()) !== 'past') void queryClient.prefetchQuery(tripQuery(t.id))
+  }, [online, trips.data, trips.dataUpdatedAt, queryClient])
 
   return (
     <Container size="lg" my="md">
