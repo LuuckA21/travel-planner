@@ -48,4 +48,12 @@ class ApiExceptionHandlerTest extends IntegrationTest {
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_PROBLEM_JSON));
     }
+
+    @Test
+    void unsupportedFileTypeIs415() throws Exception {
+        mvc.perform(get("/test/unsupported").with(user("x")))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_FILE_TYPE"));
+    }
 }

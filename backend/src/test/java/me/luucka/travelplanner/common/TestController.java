@@ -2,6 +2,7 @@ package me.luucka.travelplanner.common;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import me.luucka.travelplanner.common.storage.UnsupportedFileTypeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,5 +35,10 @@ class TestController {
     @GetMapping("/test/too-large")
     void tooLarge() {
         throw new MaxUploadSizeExceededException(25L * 1024 * 1024);
+    }
+
+    @GetMapping("/test/unsupported")
+    void unsupported() {
+        throw new UnsupportedFileTypeException();
     }
 }
