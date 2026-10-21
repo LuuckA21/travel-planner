@@ -18,6 +18,14 @@ jobs:
       - run: ./mvnw -B verify
         working-directory: backend
 
+  deploy-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -x ./*.sh
+        working-directory: deploy
+      - run: bash deploy/update-test.sh
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
