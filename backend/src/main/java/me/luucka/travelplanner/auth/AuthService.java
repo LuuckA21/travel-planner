@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,10 @@ public class AuthService {
 
     static final Duration VERIFICATION_TTL = Duration.ofHours(24);
     static final String VERIFICATION_SUBJECT = "Conferma il tuo indirizzo email";
+    static final Duration RESET_TTL = Duration.ofHours(1);
+    static final String RESET_SUBJECT = "Reimposta la tua password";
+    static final String RESET_BODY = "Ciao %s,%n%nper scegliere una nuova password apri questo link "
+            + "(valido 1 ora):%n%s%n%nSe non hai richiesto tu il reset, ignora questo messaggio.";
     static final String VERIFICATION_BODY = "Ciao %s,%n%nconferma il tuo indirizzo email aprendo questo link "
             + "(valido 24 ore):%n%s%n%nSe non hai creato tu l'account, ignora questo messaggio.";
 
@@ -32,14 +37,16 @@ public class AuthService {
     private final AuthTokenService tokens;
     private final Mailer mailer;
     private final AuthProperties properties;
+    private final FindByIndexNameSessionRepository<?> sessions;
 
     AuthService(UserAccountRepository users, PasswordEncoder passwordEncoder, AuthTokenService tokens,
-            Mailer mailer, AuthProperties properties) {
+            Mailer mailer, AuthProperties properties, FindByIndexNameSessionRepository<?> sessions) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
         this.mailer = mailer;
         this.properties = properties;
+        this.sessions = sessions;
     }
 
     public static String normalizeEmail(String email) {
@@ -95,15 +102,38 @@ public class AuthService {
                 .ifPresent(this::sendVerification);
     }
 
+    /** Silent for unknown emails, so it cannot be used to probe accounts. */
+    public void forgotPassword(String email) {
+        users.findByEmail(normalizeEmail(email)).ifPresent(user -> sendLink(user, TokenPurpose.RESET_PASSWORD,
+                RESET_TTL, "/reset-password", RESET_SUBJECT, RESET_BODY));
+    }
+
+    @Transactional
+    public void resetPassword(String rawToken, String newPassword) {
+        UserAccount user = tokens.consume(rawToken, TokenPurpose.RESET_PASSWORD).flatMap(users::findById)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TOKEN",
+                        "The link is invalid or has expired"));
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        if (user.getEmailVerifiedAt() == null) {
+            user.setEmailVerifiedAt(Instant.now());
+        }
+        // Sessions are keyed by the email principal name; close every one so a stolen session dies with the old password.
+        sessions.findByPrincipalName(user.getEmail()).keySet().forEach(sessions::deleteById);
+    }
+
     private void sendVerification(UserAccount user) {
+        sendLink(user, TokenPurpose.VERIFY_EMAIL, VERIFICATION_TTL, "/verify-email", VERIFICATION_SUBJECT,
+                VERIFICATION_BODY);
+    }
+
+    private void sendLink(UserAccount user, TokenPurpose purpose, Duration ttl, String path, String subject,
+            String body) {
+        // A token-issue failure propagates; only a mail failure is tolerated (the user can ask again).
+        String link = properties.baseUrl() + path + "?token=" + tokens.issue(user.getId(), purpose, ttl);
         try {
-            String raw = tokens.issue(user.getId(), TokenPurpose.VERIFY_EMAIL, VERIFICATION_TTL);
-            String link = properties.baseUrl() + "/verify-email?token=" + raw;
-            mailer.send(user.getEmail(), VERIFICATION_SUBJECT,
-                    VERIFICATION_BODY.formatted(user.getDisplayName(), link));
+            mailer.send(user.getEmail(), subject, body.formatted(user.getDisplayName(), link));
         } catch (RuntimeException e) {
-            // The account exists; the user can ask for another mail via resend-verification.
-            log.error("Could not send verification mail", e);
+            log.error("Could not send {} mail", purpose, e);
         }
     }
 

@@ -73,6 +73,18 @@ class AuthController {
         authService.resendVerification(body.email());
     }
 
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void forgotPassword(@Valid @RequestBody EmailRequest body) {
+        authService.forgotPassword(body.email());
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void resetPassword(@Valid @RequestBody ResetPasswordRequest body) {
+        authService.resetPassword(body.token(), body.password());
+    }
+
     @GetMapping("/me")
     MeResponse me(@AuthenticationPrincipal AppUserDetails user) {
         return authService.me(user.id());
