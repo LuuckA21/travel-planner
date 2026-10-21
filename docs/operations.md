@@ -17,11 +17,11 @@ As `travel`, install rootless Docker (see the Docker docs: `dockerd-rootless-set
 Firewall (as root). Replace `<NPM-IP>` with server A's address:
 
 ```bash
-ufw allow from <NPM-IP> to any port 8081 proto tcp
+ufw allow from <NPM-IP> to any port <APP_PORT> proto tcp   # APP_PORT from deploy/.env, default 8081
 ufw allow OpenSSH && ufw enable
 ```
 
-The app trusts `X-Forwarded-For` and `X-Forwarded-Proto` because only NPM can reach port 8081 (this ufw rule). Rate limiting keys on the rightmost `X-Forwarded-For` entry, i.e. the address NPM appended, so NPM's default `$proxy_add_x_forwarded_for` is enough: no custom header directives are needed in NPM.
+The app trusts `X-Forwarded-For` and `X-Forwarded-Proto` because only NPM can reach the app port (this ufw rule). Rate limiting keys on the rightmost `X-Forwarded-For` entry, i.e. the address NPM appended, so NPM's default `$proxy_add_x_forwarded_for` is enough: no custom header directives are needed in NPM.
 
 ## 2. First deploy
 
@@ -31,7 +31,7 @@ cp .env.example .env && chmod 600 .env
 $EDITOR .env
 ```
 
-Set at least `APP_BIND_IP` (server B's internal IP, the one NPM reaches), `APP_BASE_URL` (the public https URL), the SMTP settings, and a strong database password.
+Set at least `APP_BIND_IP` (server B's internal IP, the one NPM reaches), `APP_PORT` if 8081 is already taken on the server, `APP_BASE_URL` (the public https URL), the SMTP settings, and a strong database password.
 
 - `POSTGRES_USER`/`POSTGRES_PASSWORD` must equal `DB_USER`/`DB_PASSWORD`. Set them before the first start: the database is created with them once.
 - Use `deploy/.env`: it is the default and compose reads it for both the app and the database. If you keep the settings in a different file, pass it on every compose command with `--env-file`, e.g. `docker compose --env-file /path/to/prod.env up -d`; otherwise the db container starts with blank `POSTGRES_*`. Also export `ENV_FILE=/path/to/prod.env` so the app reads the same file.
@@ -39,7 +39,7 @@ Set at least `APP_BIND_IP` (server B's internal IP, the one NPM reaches), `APP_B
 
 ```bash
 docker compose up -d --build
-curl -s http://<internal-IP>:8081/actuator/health      # {"status":"UP",...}
+curl -s http://<internal-IP>:<APP_PORT>/actuator/health      # {"status":"UP",...}
 ```
 
 Flyway applies the migrations at startup. Only `/actuator/health` is exposed.
@@ -48,7 +48,7 @@ Flyway applies the migrations at startup. Only `/actuator/health` is exposed.
 
 On server A, add a Proxy Host:
 
-- Domain: the public name from `APP_BASE_URL`; scheme `http`; forward host/port `<internal-IP>` / `8081`.
+- Domain: the public name from `APP_BASE_URL`; scheme `http`; forward host/port `<internal-IP>` / `<APP_PORT>` (default `8081`).
 - Websockets support: off. Block common exploits: on.
 - SSL tab: request a Let's Encrypt certificate, enable Force SSL.
 - Advanced tab: `client_max_body_size 26m;` (the app's 25 MB per-file upload limit plus multipart overhead).
@@ -121,7 +121,7 @@ On success the script requests the URL, on failure `<URL>/fail`. If the server i
 
 **Warning: these commands are for an empty database and an empty files volume (a new server, or a separate test project). Never run them against a live installation: the dump would be applied on top of existing data and the files restore overwrites stored documents.**
 
-Test the restore once right after the first deploy, not on the day you need it. On the production server, do it as a separate compose project so nothing touches the live volumes, and start only the database (the app's port 8081 is taken by the live app):
+Test the restore once right after the first deploy, not on the day you need it. On the production server, do it as a separate compose project so nothing touches the live volumes, and start only the database (the app's port is taken by the live app):
 
 ```bash
 export COMPOSE_PROJECT_NAME=tp-restore-test      # separate containers and volumes; unset it afterwards
