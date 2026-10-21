@@ -66,11 +66,10 @@ To open registration for a while, set `APP_REGISTRATION_OPEN=true` in `.env` and
 ## 5. Updating
 
 ```bash
-cd ~/travel-planner/deploy
-git pull && docker compose up -d --build
+~/travel-planner/deploy/update.sh      # backup, pull, rebuild, wait until healthy
 ```
 
-Take a backup first (`./backup.sh`) when the update includes database migrations. Step-by-step first deploy, update and rollback: [deploy.md](deploy.md).
+What it does and how to go back: [deploy.md](deploy.md).
 
 ## 6. Backups
 
