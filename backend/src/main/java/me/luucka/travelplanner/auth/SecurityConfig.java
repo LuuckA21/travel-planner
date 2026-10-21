@@ -23,6 +23,7 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.servlet.HandlerExceptionResolver;
@@ -34,6 +35,11 @@ class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
         http.csrf(csrf -> csrf.spa())
+                // Mantine injects inline styles, hence 'unsafe-inline' for style-src only
+                .headers(h -> h
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; img-src 'self' blob: data:; "
+                                + "style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"))
+                        .referrerPolicy(r -> r.policy(ReferrerPolicy.SAME_ORIGIN)))
                 // Load the deferred token on every request so the SPA always has an XSRF-TOKEN cookie.
                 .addFilterAfter(eagerCsrfToken(), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
