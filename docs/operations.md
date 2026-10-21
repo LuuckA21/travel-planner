@@ -1,6 +1,6 @@
 # Operations guide
 
-Practical notes for running Travel Planner on server B (Debian, rootless Docker, behind Nginx Proxy Manager on server A). Everything below is run as the dedicated user, from `~/travel-planner/deploy`, unless stated otherwise.
+Practical notes for running Travel Planner on server B (Debian, rootless Docker, behind Nginx Proxy Manager on server A). Everything below is run as the dedicated user, from `<APP_DIR>/deploy`, unless stated otherwise. `<APP_DIR>` is where you cloned the repository, for example `/srv/apps/travel-planner` or `~/travel-planner`. Use the full path in crontab.
 
 ## 1. Server prerequisites
 
@@ -26,7 +26,7 @@ The app trusts `X-Forwarded-For` and `X-Forwarded-Proto` because only NPM can re
 ## 2. First deploy
 
 ```bash
-git clone <repo-url> ~/travel-planner && cd ~/travel-planner/deploy
+git clone <repo-url> <APP_DIR> && cd <APP_DIR>/deploy
 cp .env.example .env && chmod 600 .env
 $EDITOR .env
 ```
@@ -66,7 +66,7 @@ To open registration for a while, set `APP_REGISTRATION_OPEN=true` in `.env` and
 ## 5. Updating
 
 ```bash
-~/travel-planner/deploy/update.sh      # backup, pull, rebuild, wait until healthy
+<APP_DIR>/deploy/update.sh      # backup, pull, rebuild, wait until healthy
 ```
 
 What it does and how to go back: [deploy.md](deploy.md).
@@ -102,8 +102,8 @@ docker compose run --rm backup stats
 ```cron
 PATH=/usr/local/bin:/usr/bin:/bin
 DOCKER_HOST=unix:///run/user/<uid>/docker.sock
-15 3 * * * cd ~/travel-planner/deploy && ./backup.sh >> ~/backup.log 2>&1
-45 4 * * 0 cd ~/travel-planner/deploy && ./backup-check.sh >> ~/backup.log 2>&1
+15 3 * * * cd <APP_DIR>/deploy && ./backup.sh >> "$HOME/backup.log" 2>&1
+45 4 * * 0 cd <APP_DIR>/deploy && ./backup-check.sh >> "$HOME/backup.log" 2>&1
 ```
 
 Each run writes timestamped lines and ends with `BACKUP OK` or `BACKUP FAILED (exit N)` (`BACKUP CHECK OK` / `BACKUP CHECK FAILED` for the weekly check), and exits non-zero on failure. Because the output is redirected to the log, cron will not mail anything: a failure is silent unless you monitor it.
@@ -132,7 +132,7 @@ then follow steps 1 and 2 below (not step 3). Check the result with `docker comp
 On a new server: do sections 1 and 2 up to and including `.env` and `backup.env` (same `POSTGRES_*` values as the original, `RESTIC_PASSWORD` from the password manager), but do not start the app yet.
 
 ```bash
-cd ~/travel-planner/deploy
+cd <APP_DIR>/deploy
 docker compose run --rm backup snapshots                       # check the repository is readable
 
 # 1. database: into the empty database, before the app has run its migrations
