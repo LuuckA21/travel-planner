@@ -30,19 +30,25 @@ class AuthController {
     private final AuthenticationManager authenticationManager;
     private final AuthService authService;
     private final AuthProperties properties;
+    private final RateLimiter rateLimiter;
     private final SessionAuthenticationStrategy sessionStrategy = new ChangeSessionIdAuthenticationStrategy();
     private final SecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
 
-    AuthController(AuthenticationManager authenticationManager, AuthService authService, AuthProperties properties) {
+    AuthController(AuthenticationManager authenticationManager, AuthService authService, AuthProperties properties,
+                   RateLimiter rateLimiter) {
         this.authenticationManager = authenticationManager;
         this.authService = authService;
         this.properties = properties;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/login")
     MeResponse login(@Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
-        Authentication auth = authenticationManager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(
-                AuthService.normalizeEmail(body.email()), body.password()));
+        String email = AuthService.normalizeEmail(body.email());
+        rateLimiter.check("login-ip:" + request.getRemoteAddr(), RateLimiter.Limit.LOGIN);
+        rateLimiter.check("login-email:" + email, RateLimiter.Limit.LOGIN);
+        Authentication auth = authenticationManager.authenticate(
+                UsernamePasswordAuthenticationToken.unauthenticated(email, body.password()));
         AppUserDetails user = (AppUserDetails) auth.getPrincipal();
         if (!user.emailVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED", "Verify your email first");
@@ -57,7 +63,8 @@ class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    void register(@Valid @RequestBody RegisterRequest body) {
+    void register(@Valid @RequestBody RegisterRequest body, HttpServletRequest request) {
+        rateLimiter.check("register-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
         authService.register(body);
     }
 
@@ -69,13 +76,15 @@ class AuthController {
 
     @PostMapping("/resend-verification")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    void resendVerification(@Valid @RequestBody EmailRequest body) {
+    void resendVerification(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
+        rateLimiter.check("resend-verification-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
         authService.resendVerification(body.email());
     }
 
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    void forgotPassword(@Valid @RequestBody EmailRequest body) {
+    void forgotPassword(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
+        rateLimiter.check("forgot-password-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
         authService.forgotPassword(body.email());
     }
 

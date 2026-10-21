@@ -18,6 +18,7 @@ server:
   servlet:
     session:
       timeout: 30d
+  # Forwarded headers (client IP, scheme) are trusted because ufw restricts the port to NPM (spec section 3).
   forward-headers-strategy: framework
 
 management:

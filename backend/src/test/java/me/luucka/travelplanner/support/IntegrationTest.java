@@ -1,6 +1,7 @@
 package me.luucka.travelplanner.support;
 
 import me.luucka.travelplanner.TestcontainersConfiguration;
+import me.luucka.travelplanner.auth.RateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +25,7 @@ public abstract class IntegrationTest {
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected TestUsers testUsers;
     @Autowired protected RecordingMailer mailer;
+    @Autowired protected RateLimiter rateLimiter;
     @Autowired private WebApplicationContext context;
 
     // csrf() swaps the shared CsrfFilter's repository for a session-based one; restore production's
@@ -38,5 +40,6 @@ public abstract class IntegrationTest {
     void cleanDatabase() {
         jdbc.execute("TRUNCATE spring_session, spring_session_attributes, user_account, auth_token CASCADE");
         mailer.clear();
+        rateLimiter.reset();
     }
 }
