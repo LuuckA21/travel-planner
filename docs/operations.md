@@ -70,7 +70,7 @@ cd ~/travel-planner/deploy
 git pull && docker compose up -d --build
 ```
 
-Take a backup first (`./backup.sh`) when the update includes database migrations.
+Take a backup first (`./backup.sh`) when the update includes database migrations. Step-by-step first deploy, update and rollback: [deploy.md](deploy.md).
 
 ## 6. Backups
 
