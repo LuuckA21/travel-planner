@@ -23,6 +23,7 @@ public abstract class IntegrationTest {
     @Autowired protected MockMvc mvc;
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected TestUsers testUsers;
+    @Autowired protected RecordingMailer mailer;
     @Autowired private WebApplicationContext context;
 
     // csrf() swaps the shared CsrfFilter's repository for a session-based one; restore production's
@@ -36,5 +37,6 @@ public abstract class IntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         jdbc.execute("TRUNCATE spring_session, spring_session_attributes, user_account, auth_token CASCADE");
+        mailer.clear();
     }
 }

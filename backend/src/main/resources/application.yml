@@ -25,8 +25,12 @@ management:
     web:
       exposure:
         include: health
+  health:
+    mail:
+      enabled: false
 
 app:
   registration-open: false
   base-url: http://localhost:5173
+  mail-from: noreply@localhost
   storage-dir: ./data/files

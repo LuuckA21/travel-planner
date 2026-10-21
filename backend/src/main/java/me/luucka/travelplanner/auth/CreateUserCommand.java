@@ -73,8 +73,9 @@ class CreateUserCommand implements ApplicationRunner {
         }
         String password = readPassword.apply("Password: ");
         String repeated = readPassword.apply("Repeat password: ");
-        if (password == null || password.length() < 10 || password.length() > 128) {
-            System.err.println("Password must be 10 to 128 characters long");
+        if (password == null || password.length() < AuthService.PASSWORD_MIN || password.length() > AuthService.PASSWORD_MAX) {
+            System.err.println("Password must be " + AuthService.PASSWORD_MIN + " to " + AuthService.PASSWORD_MAX
+                    + " characters long");
             return 1;
         }
         if (!password.equals(repeated)) {

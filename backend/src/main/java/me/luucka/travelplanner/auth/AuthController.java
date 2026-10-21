@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // Logout is handled by Spring Security's LogoutFilter (see SecurityConfig).
@@ -52,6 +53,24 @@ class AuthController {
         SecurityContextHolder.setContext(context);
         contextRepository.saveContext(context, request, response);
         return authService.me(user.id());
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    void register(@Valid @RequestBody RegisterRequest body) {
+        authService.register(body);
+    }
+
+    @PostMapping("/verify-email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void verifyEmail(@Valid @RequestBody TokenRequest body) {
+        authService.verifyEmail(body.token());
+    }
+
+    @PostMapping("/resend-verification")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void resendVerification(@Valid @RequestBody EmailRequest body) {
+        authService.resendVerification(body.email());
     }
 
     @GetMapping("/me")
