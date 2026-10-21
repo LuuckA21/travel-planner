@@ -12,6 +12,7 @@ interface Ctl {
   tripId: string
   disabled: boolean
   fail: (err: unknown) => void
+  clear: () => void
 }
 
 const errorText = (err: unknown) => (err instanceof NetworkError ? m.common.networkError : m.common.genericError)
@@ -20,7 +21,7 @@ function ErrorAlert({ error }: { error: unknown }) {
   return error != null ? <Alert color="red" role="alert">{errorText(error)}</Alert> : null
 }
 
-function ItemRow({ item, tripId, disabled, fail }: Ctl & { item: ChecklistItem }) {
+function ItemRow({ item, tripId, disabled, fail, clear }: Ctl & { item: ChecklistItem }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(item.text)
   const patch = usePatchItem(tripId)
@@ -37,6 +38,7 @@ function ItemRow({ item, tripId, disabled, fail }: Ctl & { item: ChecklistItem }
         return fail(err)
       }
     }
+    clear()
     setEditing(false)
   }
 
@@ -58,18 +60,18 @@ function ItemRow({ item, tripId, disabled, fail }: Ctl & { item: ChecklistItem }
         label={item.text}
         checked={item.done}
         disabled={disabled}
-        onChange={(e) => patch.mutate({ id: item.id, done: e.currentTarget.checked }, { onError: fail })}
+        onChange={(e) => patch.mutate({ id: item.id, done: e.currentTarget.checked }, { onSuccess: clear, onError: fail })}
         styles={{ label: { overflowWrap: 'anywhere' } }}
       />
       <Group gap={4} wrap="nowrap">
-        <Button variant="subtle" size="compact-xs" disabled={disabled} aria-label={`${t.editItem} ${item.text}`} onClick={() => { setText(item.text); setEditing(true) }}>✎</Button>
-        <ActionIcon variant="subtle" color="red" size="sm" disabled={disabled} loading={del.isPending} aria-label={`${t.deleteItem} ${item.text}`} onClick={() => del.mutate(item.id, { onError: fail })}>×</ActionIcon>
+        <ActionIcon variant="subtle" size={36} disabled={disabled} aria-label={`${t.editItem} ${item.text}`} onClick={() => { setText(item.text); setEditing(true) }}>✎</ActionIcon>
+        <ActionIcon variant="subtle" color="red" size={36} disabled={disabled} loading={del.isPending} aria-label={`${t.deleteItem} ${item.text}`} onClick={() => del.mutate(item.id, { onSuccess: clear, onError: fail })}>×</ActionIcon>
       </Group>
     </Group>
   )
 }
 
-function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail'> & { list: Checklist }) {
+function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail' | 'clear'> & { list: Checklist }) {
   const [error, setError] = useState<unknown>()
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(list.name)
@@ -79,6 +81,7 @@ function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail'> & { list: C
   const del = useDeleteChecklist(tripId)
   const add = useAddItem(tripId)
   const fail = (err: unknown) => { setError(err); setConfirm(false) }
+  const clear = () => setError(undefined)
 
   const done = list.items.filter((i) => i.done).length
   const total = list.items.length
@@ -127,7 +130,7 @@ function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail'> & { list: C
         {renaming ? (
           <form onSubmit={(e) => void rename(e)}>
             <Group gap="xs" wrap="nowrap">
-              <TextInput aria-label={t.rename} value={name} onChange={(e) => setName(e.currentTarget.value)} maxLength={80} style={{ flex: 1 }} autoFocus />
+              <TextInput aria-label={`${t.rename} ${list.name}`} value={name} onChange={(e) => setName(e.currentTarget.value)} maxLength={80} style={{ flex: 1 }} autoFocus />
               <Button type="submit" size="compact-sm" loading={save.isPending} disabled={disabled}>{t.save}</Button>
               <Button variant="default" size="compact-sm" onClick={() => { setName(list.name); setRenaming(false) }}>{t.cancel}</Button>
             </Group>
@@ -136,8 +139,8 @@ function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail'> & { list: C
           <Group justify="space-between" wrap="nowrap">
             <Text fw={600} style={{ overflowWrap: 'anywhere' }}>{list.name}</Text>
             <Group gap="xs" wrap="nowrap">
-              <Button variant="subtle" size="compact-sm" disabled={disabled} onClick={() => { setName(list.name); setRenaming(true) }}>{t.rename}</Button>
-              <Button variant="subtle" color="red" size="compact-sm" disabled={disabled} loading={del.isPending} onClick={confirm ? () => void remove() : () => setConfirm(true)}>
+              <Button variant="subtle" size="compact-sm" disabled={disabled} aria-label={`${t.rename} ${list.name}`} onClick={() => { setName(list.name); setRenaming(true) }}>{t.rename}</Button>
+              <Button variant="subtle" color="red" size="compact-sm" disabled={disabled} loading={del.isPending} aria-label={`${confirm ? t.deleteConfirm : t.delete} ${list.name}`} onClick={confirm ? () => void remove() : () => setConfirm(true)}>
                 {confirm ? t.deleteConfirm : t.delete}
               </Button>
             </Group>
@@ -147,9 +150,9 @@ function ChecklistCard({ list, tripId, disabled }: Omit<Ctl, 'fail'> & { list: C
           <Progress value={total ? (done / total) * 100 : 0} aria-label={t.progress} style={{ flex: 1 }} />
           <Text size="sm" c="dimmed">{done}/{total}</Text>
         </Group>
-        {list.items.map((i) => <ItemRow key={i.id} item={i} tripId={tripId} disabled={disabled} fail={fail} />)}
+        {list.items.map((i) => <ItemRow key={i.id} item={i} tripId={tripId} disabled={disabled} fail={fail} clear={clear} />)}
         <form onSubmit={(e) => void addItem(e)}>
-          <TextInput aria-label={t.newItem} placeholder={t.newItem} value={newItem} onChange={(e) => setNewItem(e.currentTarget.value)} maxLength={300} disabled={disabled} />
+          <TextInput aria-label={`${t.newItem} ${list.name}`} placeholder={t.newItem} value={newItem} onChange={(e) => setNewItem(e.currentTarget.value)} maxLength={300} disabled={disabled} />
         </form>
       </Stack>
     </Card>

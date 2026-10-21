@@ -181,7 +181,9 @@ export function useAddItem(tripId: string) {
 export function usePatchItem(tripId: string) {
   const qc = useQueryClient()
   const key = ['trip', tripId]
+  const mutationKey = ['patch-item', tripId]
   return useMutation({
+    mutationKey,
     mutationFn: ({ id, ...patch }: { id: string; text?: string; done?: boolean }) =>
       apiFetch<ChecklistItem>(`/checklist-items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
     onMutate: async ({ id, ...patch }) => {
@@ -198,7 +200,8 @@ export function usePatchItem(tripId: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(key, ctx.previous)
     },
-    onSettled: () => invalidateTrip(qc, tripId),
+    // Only the last in-flight patch refetches (it is still counted here), or the refetch would overwrite later optimistic state.
+    onSettled: () => (qc.isMutating({ mutationKey }) === 1 ? invalidateTrip(qc, tripId) : undefined),
   })
 }
 

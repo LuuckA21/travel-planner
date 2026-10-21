@@ -24,9 +24,10 @@ const trip = (checklists: Checklist[]): TripDetail => ({
 
 const fetchMock = vi.fn()
 let qc: QueryClient
+let refetch: () => Promise<TripDetail> = () => Promise.reject(new Error('unused'))
 // Like TripPage: the tab renders whatever the trip query cache holds, so optimistic updates are visible.
 function Live({ id }: { id: string }) {
-  const { data } = useQuery<TripDetail>({ queryKey: ['trip', id], queryFn: () => Promise.reject(new Error('unused')), staleTime: Infinity })
+  const { data } = useQuery<TripDetail>({ queryKey: ['trip', id], queryFn: () => refetch(), staleTime: Infinity })
   return <ChecklistsTab trip={data as TripDetail} />
 }
 const renderTab = (data: TripDetail) => {
@@ -45,6 +46,7 @@ const call = (n = 0) => ({ url: fetchMock.mock.calls[n][0], method: fetchMock.mo
 
 beforeEach(() => {
   fetchMock.mockReset()
+  refetch = () => Promise.reject(new Error('unused'))
   vi.stubGlobal('fetch', fetchMock)
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -85,7 +87,7 @@ test('enter in quick-add posts the trimmed item, clears the input and keeps focu
   fetchMock.mockResolvedValue(json({ id: 'i4', text: 'Crema', done: false, position: 3 }, 201))
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  const input = screen.getByRole('textbox', { name: t.newItem })
+  const input = screen.getByRole('textbox', { name: `${t.newItem} Valigia` })
   await user.type(input, '  Crema  {Enter}')
   await vi.waitFor(() => expect(input).toHaveValue(''))
   expect(call()).toEqual({ url: '/api/checklists/c1/items', method: 'POST', body: { text: 'Crema' } })
@@ -95,7 +97,7 @@ test('enter in quick-add posts the trimmed item, clears the input and keeps focu
 test('quick-add ignores blank text', async () => {
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  await user.type(screen.getByRole('textbox', { name: t.newItem }), '   {Enter}')
+  await user.type(screen.getByRole('textbox', { name: `${t.newItem} Valigia` }), '   {Enter}')
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
@@ -103,7 +105,7 @@ test('quick-add failure keeps the text and shows an error', async () => {
   fetchMock.mockResolvedValue(json({}, 500))
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  const input = screen.getByRole('textbox', { name: t.newItem })
+  const input = screen.getByRole('textbox', { name: `${t.newItem} Valigia` })
   await user.type(input, 'Crema{Enter}')
   expect(await screen.findByRole('alert')).toHaveTextContent(m.common.genericError)
   expect(input).toHaveValue('Crema')
@@ -143,8 +145,8 @@ test('renames a checklist', async () => {
   fetchMock.mockResolvedValue(json({ id: 'c1', name: 'Zaino', position: 0, items: [] }))
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  await user.click(screen.getByRole('button', { name: t.rename }))
-  const input = screen.getByRole('textbox', { name: t.rename })
+  await user.click(screen.getByRole('button', { name: `${t.rename} Valigia` }))
+  const input = screen.getByRole('textbox', { name: `${t.rename} Valigia` })
   await user.clear(input)
   await user.type(input, 'Zaino{Enter}')
   await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
@@ -155,9 +157,9 @@ test('checklist delete needs a second click, then calls the API', async () => {
   fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  await user.click(screen.getByRole('button', { name: t.delete }))
+  await user.click(screen.getByRole('button', { name: `${t.delete} Valigia` }))
   expect(fetchMock).not.toHaveBeenCalled()
-  await user.click(screen.getByRole('button', { name: t.deleteConfirm }))
+  await user.click(screen.getByRole('button', { name: `${t.deleteConfirm} Valigia` }))
   await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
   expect(call()).toEqual({ url: '/api/checklists/c1', method: 'DELETE', body: null })
 })
@@ -166,8 +168,36 @@ test('shows an Italian error when a checklist delete fails', async () => {
   fetchMock.mockRejectedValue(new TypeError('offline'))
   const user = userEvent.setup()
   renderTab(trip([list()]))
-  await user.click(screen.getByRole('button', { name: t.delete }))
-  await user.click(screen.getByRole('button', { name: t.deleteConfirm }))
+  await user.click(screen.getByRole('button', { name: `${t.delete} Valigia` }))
+  await user.click(screen.getByRole('button', { name: `${t.deleteConfirm} Valigia` }))
   const alert = await screen.findByRole('alert')
   expect(within(alert).getByText(m.common.networkError)).toBeInTheDocument()
+})
+
+test('a successful retry clears the error from a failed toggle', async () => {
+  fetchMock.mockResolvedValueOnce(json({}, 500)).mockResolvedValue(json({ id: 'i2', text: 'Caricabatterie', done: true, position: 1 }))
+  const user = userEvent.setup()
+  renderTab(trip([list()]))
+  await user.click(screen.getByRole('checkbox', { name: 'Caricabatterie' }))
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  await user.click(screen.getByRole('checkbox', { name: 'Caricabatterie' }))
+  await vi.waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+})
+
+test('a refetch after the first of two quick toggles does not revert the second', async () => {
+  const resolvers: (() => void)[] = []
+  fetchMock.mockImplementation(() => new Promise((resolve) => resolvers.push(() => resolve(json({})))))
+  const serverState = trip([list()])
+  refetch = vi.fn(() => Promise.resolve(serverState))
+  const user = userEvent.setup()
+  renderTab(serverState)
+  await user.click(screen.getByRole('checkbox', { name: 'Caricabatterie' }))
+  await user.click(screen.getByRole('checkbox', { name: 'Adattatore' }))
+  resolvers[0]()
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(refetch).not.toHaveBeenCalled()
+  expect(screen.getByRole('checkbox', { name: 'Adattatore' })).toBeChecked()
+  resolvers[1]()
+  await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(1))
 })
