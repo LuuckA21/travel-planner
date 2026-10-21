@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -28,6 +29,7 @@ class OwnershipTest extends IntegrationTest {
 
     static final String ACTIVITY_BODY = "{\"date\":\"2027-03-11\",\"title\":\"Y\"}";
     static final String ORDER_BODY = "{\"date\":\"2027-03-11\",\"activityIds\":[\"{activity}\"]}";
+    static final String BOOKING_BODY = "{\"type\":\"FLIGHT\",\"title\":\"Y\",\"startAt\":\"2027-03-11T10:00:00\"}";
     static final String TRIP_BODY =
             "{\"name\":\"X\",\"destinations\":[\"Roma\"],\"startDate\":\"2027-03-10\",\"endDate\":\"2027-03-12\"}";
 
@@ -35,6 +37,7 @@ class OwnershipTest extends IntegrationTest {
 
     UUID trip;
     UUID activity;
+    UUID booking;
     RequestPostProcessor userA;
     RequestPostProcessor userB;
 
@@ -48,6 +51,9 @@ class OwnershipTest extends IntegrationTest {
         activity = UUID.randomUUID();
         jdbc.update("INSERT INTO activity (id, trip_id, date, position, title) VALUES (?, ?, ?, 0, 'Walk')",
                 activity, trip, LocalDate.of(2027, 3, 11));
+        booking = UUID.randomUUID();
+        jdbc.update("INSERT INTO booking (id, trip_id, type, title, start_at) VALUES (?, ?, 'FLIGHT', 'Flight', ?)",
+                booking, trip, LocalDateTime.of(2027, 3, 11, 10, 0));
     }
 
     static Stream<Arguments> endpoints() {
@@ -58,7 +64,10 @@ class OwnershipTest extends IntegrationTest {
                 Arguments.of(HttpMethod.POST, "/api/trips/{trip}/activities", ACTIVITY_BODY),
                 Arguments.of(HttpMethod.PUT, "/api/activities/{activity}", ACTIVITY_BODY),
                 Arguments.of(HttpMethod.DELETE, "/api/activities/{activity}", null),
-                Arguments.of(HttpMethod.PUT, "/api/trips/{trip}/activities/order", ORDER_BODY));
+                Arguments.of(HttpMethod.PUT, "/api/trips/{trip}/activities/order", ORDER_BODY),
+                Arguments.of(HttpMethod.POST, "/api/trips/{trip}/bookings", BOOKING_BODY),
+                Arguments.of(HttpMethod.PUT, "/api/bookings/{booking}", BOOKING_BODY),
+                Arguments.of(HttpMethod.DELETE, "/api/bookings/{booking}", null));
     }
 
     @ParameterizedTest
@@ -69,12 +78,16 @@ class OwnershipTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM activity", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT title FROM activity WHERE id = ?", String.class, activity))
                 .isEqualTo("Walk");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM booking", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT title FROM booking WHERE id = ?", String.class, booking))
+                .isEqualTo("Flight");
         // Positive control (last: DELETE rows destroy the fixture): the owner's identical request is not a 404
         assertThat(send(userA, method, template, body)).isNotEqualTo(404);
     }
 
     private int send(RequestPostProcessor user, HttpMethod method, String template, String body) throws Exception {
-        String uri = template.replace("{trip}", trip.toString()).replace("{activity}", activity.toString());
+        String uri = template.replace("{trip}", trip.toString()).replace("{activity}", activity.toString())
+                .replace("{booking}", booking.toString());
         var req = request(method, uri).with(user).with(csrf());
         if (body != null) {
             req.contentType(APPLICATION_JSON).content(body.replace("{activity}", activity.toString()));

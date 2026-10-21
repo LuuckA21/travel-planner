@@ -2,6 +2,7 @@ package me.luucka.travelplanner.trip;
 
 import java.util.List;
 import java.util.UUID;
+import me.luucka.travelplanner.booking.BookingService;
 import me.luucka.travelplanner.itinerary.ActivityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,11 +14,14 @@ class TripService {
     private final TripRepository trips;
     private final TripAccess access;
     private final ActivityService activities;
+    private final BookingService bookings;
 
-    TripService(TripRepository trips, TripAccess access, ActivityService activities) {
+    TripService(TripRepository trips, TripAccess access, ActivityService activities,
+                BookingService bookings) {
         this.trips = trips;
         this.access = access;
         this.activities = activities;
+        this.bookings = bookings;
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +56,7 @@ class TripService {
 
     private TripDetail detail(Trip t) {
         return new TripDetail(t.getId(), t.getName(), List.copyOf(t.getDestinations()), t.getStartDate(),
-                t.getEndDate(), null, activities.listForTrip(t.getId()));
+                t.getEndDate(), null, activities.listForTrip(t.getId()),
+                bookings.listForTrip(t.getId()));
     }
 }
