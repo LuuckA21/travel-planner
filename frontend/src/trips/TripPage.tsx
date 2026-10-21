@@ -1,10 +1,10 @@
 import { Alert, Box, Button, Container, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
 import type { ComponentType } from 'react'
-import { Link, Navigate, NavLink, useParams } from 'react-router'
+import { Link, Navigate, useParams } from 'react-router'
 import { useTrip } from '../api/queries'
 import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
-import { daysUntil, dayNumber, todayLocal, tripStatus } from '../lib/dates'
+import { daysUntil, dayNumber, formatDateRange, todayLocal, tripStatus } from '../lib/dates'
 import SummaryTab from './SummaryTab'
 
 // Tasks 20-23 replace these placeholders.
@@ -41,13 +41,14 @@ export default function TripPage() {
   const Tab = tabs[tab]
   return (
     <>
-      <Container size="lg" my="md" pb={80}>
+      <Container size="lg" my="md" pb="calc(80px + env(safe-area-inset-bottom))">
         <Stack>
           {data.coverUrl && <Image src={data.coverUrl} alt="" h={160} radius="md" />}
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <Stack gap={0}>
               <Title order={1}>{data.name}</Title>
               {data.destinations.length > 0 && <Text>{data.destinations.join(' · ')}</Text>}
+              <Text size="sm" c="dimmed">{formatDateRange(data.startDate, data.endDate)}</Text>
               <Text size="sm" c="dimmed">{progress(data)}</Text>
             </Stack>
             <Button component={Link} to={`/trips/${data.id}/edit`} size="xs" variant="default">{m.dashboard.edit}</Button>
@@ -56,11 +57,11 @@ export default function TripPage() {
         </Stack>
       </Container>
       <Box component="nav" aria-label={m.trip.nav} pos="fixed" bottom={0} left={0} right={0} bg="var(--mantine-color-body)" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
-        <Group justify="space-around" py="xs" wrap="nowrap">
+        <Group justify="space-around" pt="xs" pb="calc(var(--mantine-spacing-xs) + env(safe-area-inset-bottom))" wrap="nowrap">
           {(Object.keys(tabs) as Tab[]).map((k) => (
-            <NavLink key={k} to={`/trips/${data.id}/${k}`} style={({ isActive }) => ({ fontWeight: isActive ? 700 : 400, fontSize: 14 })}>
+            <Link key={k} to={`/trips/${data.id}/${k}`} aria-current={k === tab ? 'page' : undefined} style={{ fontWeight: k === tab ? 700 : 400, fontSize: 14 }}>
               {m.trip.tabs[k]}
-            </NavLink>
+            </Link>
           ))}
         </Group>
       </Box>

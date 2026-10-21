@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { dayNumber, daysUntil, formatDayHeader, todayLocal, tripStatus } from './dates'
+import { dayNumber, daysUntil, formatDateRange, formatDayHeader, todayLocal, tripStatus } from './dates'
 
 afterEach(() => vi.useRealTimers())
 
@@ -28,4 +28,9 @@ test('dayNumber and daysUntil count calendar days across month ends', () => {
 
 test('formatDayHeader', () => {
   expect(formatDayHeader('2027-03-12', 3)).toBe('Ven 12 mar · Giorno 3')
+  expect(formatDayHeader('2027-03-12')).toBe('Ven 12 mar')
+})
+
+test('formatDateRange parses by parts and keeps the local day', () => {
+  expect(formatDateRange('2027-03-01', '2027-03-14')).toBe('1 mar 2027 – 14 mar 2027')
 })

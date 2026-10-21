@@ -30,8 +30,14 @@ export const daysUntil = (date: string, today: string) => diffDays(today, date)
 
 const fmt = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
 
-export function formatDayHeader(date: string, day: number): string {
+export function formatDayHeader(date: string, day?: number): string {
   // "ven 12 mar" -> "Ven 12 mar"; strip any trailing dots some ICU versions add
   const text = fmt.format(parse(date)).replace(/\./g, '')
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)} · ${m.itinerary.day} ${day}`
+  const label = `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+  return day === undefined ? label : `${label} · ${m.itinerary.day} ${day}`
 }
+
+const rangeFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+
+export const formatDateRange = (start: string, end: string) =>
+  `${rangeFmt.format(parse(start))} – ${rangeFmt.format(parse(end))}`

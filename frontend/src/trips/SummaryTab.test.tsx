@@ -53,6 +53,7 @@ test('shows "tra 12 giorni" before the trip', async () => {
   expect(await screen.findByText('tra 12 giorni')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Giappone' })).toBeInTheDocument()
   expect(screen.getByText('Tokyo · Kyoto')).toBeInTheDocument()
+  expect(screen.getByText('2 nov 2026 – 10 nov 2026')).toBeInTheDocument()
 })
 
 test('shows "Giorno 3 di 10" during the trip', async () => {
@@ -96,4 +97,24 @@ test('keeps showing the trip when a background refetch fails', async () => {
   expect(client.getQueryState(['trip', 't1'])?.status).toBe('error')
   expect(screen.getByRole('heading', { name: 'Giappone' })).toBeInTheDocument()
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test('marks the summary tab active on /trips/:id without a tab', async () => {
+  renderTrip(trip('2026-11-02', '2026-11-10'))
+  expect(await screen.findByRole('link', { name: m.trip.tabs.summary })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('link', { name: m.trip.tabs.itinerary })).not.toHaveAttribute('aria-current')
+})
+
+test('omits the day number for items outside the trip dates', async () => {
+  const a = { position: 0, startTime: null, location: null, mapsUrl: null, mapsLink: null, notes: null }
+  renderTrip(
+    trip('2026-10-19', '2026-10-28', {
+      activities: [
+        { ...a, id: 'in', date: '2026-10-22', title: 'Dentro' },
+        { ...a, id: 'out', date: '2026-10-30', title: 'Fuori' },
+      ],
+    }),
+  )
+  expect(await screen.findByText('Gio 22 ott · Giorno 4')).toBeInTheDocument()
+  expect(screen.getByText('Ven 30 ott')).toBeInTheDocument()
 })

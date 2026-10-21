@@ -7,6 +7,12 @@ import { nextItems } from '../lib/itinerary'
 
 const t = m.trip
 
+// Activities and bookings can fall outside the trip dates; skip the day number then.
+function when(trip: TripDetail, date: string) {
+  const day = dayNumber(trip, date)
+  return formatDayHeader(date, day >= 1 && day <= dayNumber(trip, trip.endDate) ? day : undefined)
+}
+
 export default function SummaryTab({ trip }: { trip: TripDetail }) {
   // Fixed at mount; the tab remounts whenever the user navigates back to it.
   const [now] = useState(() => new Date())
@@ -21,7 +27,7 @@ export default function SummaryTab({ trip }: { trip: TripDetail }) {
           <Card key={a.id} withBorder padding="sm">
             <Text fw={500}>{a.title}</Text>
             <Text size="sm" c="dimmed">
-              {formatDayHeader(a.date, dayNumber(trip, a.date))}
+              {when(trip, a.date)}
               {a.startTime && ` · ${a.startTime.slice(0, 5)}`}
             </Text>
           </Card>
@@ -33,7 +39,7 @@ export default function SummaryTab({ trip }: { trip: TripDetail }) {
           <Card withBorder padding="sm">
             <Text fw={500}>{booking.title}</Text>
             <Text size="sm" c="dimmed">
-              {formatDayHeader(bookingDate, dayNumber(trip, bookingDate))} · {booking.startAt.slice(11, 16)}
+              {when(trip, bookingDate)} · {booking.startAt.slice(11, 16)}
             </Text>
           </Card>
         ) : (
