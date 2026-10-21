@@ -6,7 +6,8 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { m } from '../i18n/it'
 import type { Me } from '../api/types'
 import RequireAuth from './RequireAuth'
-import { logout } from './useMe'
+import { clearOfflineData, claimOfflineData } from '../offline/persistence'
+import { browser, logout } from './useMe'
 
 const me: Me = { id: '1', email: 'a@b.it', displayName: 'Ada' }
 
@@ -41,7 +42,9 @@ const settled = (queryClient: QueryClient) =>
     expect(state?.status).toBe('error')
   })
 
-afterEach(() => {
+afterEach(async () => {
+  vi.restoreAllMocks()
+  await clearOfflineData(new QueryClient())
   vi.unstubAllGlobals()
   onlineManager.setOnline(true)
 })
@@ -118,4 +121,30 @@ test('logout on a network error keeps the session and rethrows', async () => {
   await expect(logout(queryClient, navigate)).rejects.toThrow()
   expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
   expect(navigate).not.toHaveBeenCalled()
+})
+
+test('a restored snapshot of another user is never shown: content waits for the server and the claim', async () => {
+  const reload = vi.spyOn(browser, 'reload').mockImplementation(() => {})
+  const queryClient = seeded() // restored: user 1 and their trips
+  await claimOfflineData(queryClient, me.id)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...me, id: '2' }), { status: 200 })))
+  let shown = false
+  const observer = new MutationObserver(() => (shown ||= document.body.textContent?.includes('secret content') ?? false))
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+
+  renderProtected(queryClient)
+  await vi.waitFor(() => expect(reload).toHaveBeenCalled())
+  observer.disconnect()
+
+  expect(shown).toBe(false)
+  expect(queryClient.getQueryData(['trips'])).toBeUndefined()
+})
+
+test('the same user is shown once the server confirms', async () => {
+  const queryClient = seeded()
+  await claimOfflineData(queryClient, me.id)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(me), { status: 200 })))
+  renderProtected(queryClient)
+  expect(await screen.findByText('secret content')).toBeInTheDocument()
+  expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
 })

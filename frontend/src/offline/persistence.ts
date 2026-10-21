@@ -5,6 +5,8 @@ import { del, get, set } from 'idb-keyval'
 import { version } from '../../package.json'
 
 const CACHE_KEY = 'travel-planner-query-cache'
+// Owner of everything offline, kept apart from the snapshot so the documents cache is wiped even if the snapshot is gone.
+const OWNER_KEY = 'travel-planner-owner'
 export const DOCUMENTS_CACHE = 'documents'
 
 // Owner of the data currently in memory: restored with the snapshot, claimed by the signed-in user, reset on clear.
@@ -39,15 +41,18 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
 
 // Wipes everything cached for the signed-in user: memory, the persisted snapshot and the offline documents.
 export async function clearOfflineData(queryClient: QueryClient): Promise<void> {
-  queryClient.clear()
+  // Reset first: clear() triggers snapshots, which must not carry the previous owner.
   ownerId = undefined
-  await Promise.all([del(CACHE_KEY), globalThis.caches?.delete(DOCUMENTS_CACHE)])
+  queryClient.clear()
+  await Promise.all([del(CACHE_KEY), del(OWNER_KEY), globalThis.caches?.delete(DOCUMENTS_CACHE)])
 }
 
 // Called with the user the server confirmed; returns true when another user's data had to be wiped.
 export async function claimOfflineData(queryClient: QueryClient, userId: string): Promise<boolean> {
-  const other = ownerId !== undefined && ownerId !== userId
+  const owners = [ownerId, await get<string>(OWNER_KEY)]
+  const other = owners.some((o) => o !== undefined && o !== userId)
   if (other) await clearOfflineData(queryClient)
   ownerId = userId
+  if (owners[1] !== userId) await set(OWNER_KEY, userId)
   return other
 }

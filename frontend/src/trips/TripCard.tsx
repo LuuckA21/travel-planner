@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import type { TripSummary } from '../api/types'
 import { m } from '../i18n/it'
 import { formatDateRange } from '../lib/dates'
+import OnlineLinkButton from '../offline/OnlineLinkButton'
 
 export default function TripCard({ trip, today }: { trip: TripSummary; today?: string }) {
   return (
@@ -19,7 +20,7 @@ export default function TripCard({ trip, today }: { trip: TripSummary; today?: s
         {today && (
           <Button component={Link} to={`/trips/${trip.id}/itinerary?day=${today}`} size="xs">{m.dashboard.today}</Button>
         )}
-        <Button component={Link} to={`/trips/${trip.id}/edit`} size="xs" variant="default">{m.dashboard.edit}</Button>
+        <OnlineLinkButton to={`/trips/${trip.id}/edit`} size="xs" variant="default">{m.dashboard.edit}</OnlineLinkButton>
       </Group>
     </Card>
   )

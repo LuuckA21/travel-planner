@@ -5,6 +5,7 @@ import { useTrip } from '../api/queries'
 import { m } from '../i18n/it'
 import { bookingIcon } from '../lib/bookings'
 import { formatDateTime } from '../lib/dates'
+import { documentTarget } from '../lib/documents'
 import { useOnline } from '../offline/useOnline'
 import BookingForm from './BookingForm'
 import DocumentUploadButton from './DocumentUploadButton'
@@ -56,7 +57,7 @@ export default function BookingDetail() {
           <Title order={2} size="h4">{t.documents}</Title>
           {documents.length === 0 && <Text c="dimmed">{t.noDocuments}</Text>}
           {documents.map((d) => (
-            <Anchor key={d.id} href={d.fileUrl} target="_blank" rel="noopener">{d.filename}</Anchor>
+            <Anchor key={d.id} href={d.fileUrl} target={documentTarget()} rel="noopener">{d.filename}</Anchor>
           ))}
           <DocumentUploadButton tripId={trip.data.id} bookingId={booking.id} />
         </Stack>

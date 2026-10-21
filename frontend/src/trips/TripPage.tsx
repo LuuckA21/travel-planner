@@ -1,9 +1,10 @@
-import { Alert, Box, Button, Container, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
+import { Alert, Box, Container, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
 import type { ComponentType } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useTrip } from '../api/queries'
 import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
+import OnlineLinkButton from '../offline/OnlineLinkButton'
 import { daysUntil, dayNumber, formatDateRange, todayLocal, tripStatus } from '../lib/dates'
 import BookingsTab from './BookingsTab'
 import ChecklistsTab from './ChecklistsTab'
@@ -52,7 +53,7 @@ export default function TripPage() {
               <Text size="sm" c="dimmed">{formatDateRange(data.startDate, data.endDate)}</Text>
               <Text size="sm" c="dimmed">{progress(data)}</Text>
             </Stack>
-            <Button component={Link} to={`/trips/${data.id}/edit`} size="xs" variant="default">{m.dashboard.edit}</Button>
+            <OnlineLinkButton to={`/trips/${data.id}/edit`} size="xs" variant="default">{m.dashboard.edit}</OnlineLinkButton>
           </Group>
           <Tab trip={data} />
         </Stack>

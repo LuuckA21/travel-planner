@@ -3,19 +3,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import ActivityForm from '../trips/ActivityForm'
 import BookingDetail from '../trips/BookingDetail'
 import BookingForm from '../trips/BookingForm'
 import BookingsTab from '../trips/BookingsTab'
+import DashboardPage from '../trips/DashboardPage'
+import TripPage from '../trips/TripPage'
 import ChecklistsTab from '../trips/ChecklistsTab'
 import DocumentsTab from '../trips/DocumentsTab'
 import ItineraryTab from '../trips/ItineraryTab'
 import TripFormPage from '../trips/TripFormPage'
 
-vi.mock('./useOnline', () => ({ useOnline: () => false }))
+vi.mock('./useOnline', () => ({ useOnline: () => false, reportReachable: () => {} }))
+// Mount refetches stay pending: these tests only look at the cached state.
+beforeEach(() => vi.stubGlobal('fetch', () => new Promise(() => {})))
+afterEach(() => vi.unstubAllGlobals())
 
 const booking = { id: 'b1', type: 'FLIGHT', title: 'Volo Tokyo', provider: null, reference: null, startAt: '2027-03-10T10:00:00', endAt: null, origin: null, location: null, notes: null } as const
 const activity = { id: 'a1', date: '2027-03-10', position: 0, title: 'Tempio', startTime: null, location: null, mapsUrl: null, mapsLink: null, notes: null }
@@ -30,6 +35,7 @@ const trip: TripDetail = {
 function renderAt(ui: ReactNode, path = '/', route = '*') {
   const qc = new QueryClient()
   qc.setQueryData(['trip', 't1'], trip)
+  qc.setQueryData(['trips'], [trip])
   render(
     <MantineProvider>
       <QueryClientProvider client={qc}>
@@ -96,4 +102,18 @@ test('trip form cannot save, delete or remove the cover offline', () => {
   expect(button(m.tripForm.save)).toBeDisabled()
   expect(button(m.tripForm.delete)).toBeDisabled()
   expect(button(m.tripForm.removeCover)).toBeDisabled()
+})
+
+test('dashboard: new trip and edit are disabled buttons, not links, offline', () => {
+  renderAt(<DashboardPage />)
+  expect(screen.queryByRole('link', { name: m.dashboard.newTrip })).not.toBeInTheDocument()
+  expect(button(m.dashboard.newTrip)).toBeDisabled()
+  expect(screen.queryByRole('link', { name: m.dashboard.edit })).not.toBeInTheDocument()
+  expect(button(m.dashboard.edit)).toBeDisabled()
+})
+
+test('trip page: edit is a disabled button offline', () => {
+  renderAt(<TripPage />, '/trips/t1/summary', '/trips/:id/:tab?')
+  expect(screen.queryByRole('link', { name: m.dashboard.edit })).not.toBeInTheDocument()
+  expect(button(m.dashboard.edit)).toBeDisabled()
 })

@@ -1,15 +1,19 @@
 import { Alert, Button, Container, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core'
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { NetworkError } from '../api/client'
 import { tripQuery, useTrips } from '../api/queries'
 import type { TripSummary } from '../api/types'
 import { logout } from '../auth/useMe'
 import { todayLocal, tripStatus } from '../lib/dates'
 import { m } from '../i18n/it'
+import OnlineLinkButton from '../offline/OnlineLinkButton'
 import { useOnline } from '../offline/useOnline'
 import TripCard from './TripCard'
+
+// Each focus/refetch of the trip list must not re-download every upcoming trip.
+const PREFETCH_STALE_MS = 5 * 60 * 1000
 
 function Section({ title, trips, today }: { title: string; trips: TripSummary[]; today?: string }) {
   if (trips.length === 0) return null
@@ -43,7 +47,7 @@ export default function DashboardPage() {
   // Fetch every in-progress and upcoming trip in full, so it is cached for offline use without being opened.
   useEffect(() => {
     if (!online || !trips.data) return
-    for (const t of trips.data) if (tripStatus(t, todayLocal()) !== 'past') void queryClient.prefetchQuery(tripQuery(t.id))
+    for (const t of trips.data) if (tripStatus(t, todayLocal()) !== 'past') void queryClient.prefetchQuery({ ...tripQuery(t.id), staleTime: PREFETCH_STALE_MS })
   }, [online, trips.data, trips.dataUpdatedAt, queryClient])
 
   return (
@@ -52,7 +56,7 @@ export default function DashboardPage() {
         <Group justify="space-between" wrap="nowrap">
           <Title order={1}>{m.dashboard.title}</Title>
           <Group gap="xs" wrap="nowrap">
-            <Button component={Link} to="/trips/new">{m.dashboard.newTrip}</Button>
+            <OnlineLinkButton to="/trips/new">{m.dashboard.newTrip}</OnlineLinkButton>
             <Button variant="default" onClick={signOut}>{m.auth.logout}</Button>
           </Group>
         </Group>
@@ -62,7 +66,7 @@ export default function DashboardPage() {
         {trips.data && all.length === 0 && (
           <Stack align="center" py="xl">
             <Text>{m.dashboard.empty}</Text>
-            <Button component={Link} to="/trips/new">{m.dashboard.newTrip}</Button>
+            <OnlineLinkButton to="/trips/new">{m.dashboard.newTrip}</OnlineLinkButton>
           </Stack>
         )}
         <Section title={m.dashboard.inProgress} trips={inProgress} today={today} />

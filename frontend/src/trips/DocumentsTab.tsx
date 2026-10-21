@@ -4,7 +4,7 @@ import { NetworkError } from '../api/client'
 import { useDeleteDocument } from '../api/queries'
 import type { DocumentMeta, TripDetail } from '../api/types'
 import { m } from '../i18n/it'
-import { formatSize } from '../lib/documents'
+import { documentTarget, formatSize } from '../lib/documents'
 import { makeTripOffline } from '../offline/documentsCache'
 import { useOnline } from '../offline/useOnline'
 import DocumentUploadButton from './DocumentUploadButton'
@@ -32,7 +32,7 @@ function DocumentRow({ tripId, doc, bookingTitle }: { tripId: string; doc: Docum
       <Stack gap="xs">
         {error != null && <Alert color="red" role="alert">{error instanceof NetworkError ? m.common.networkError : m.common.genericError}</Alert>}
         <Stack gap={2}>
-          <Anchor href={doc.fileUrl} target="_blank" rel="noopener" fw={500} style={{ overflowWrap: 'anywhere' }}>{doc.filename}</Anchor>
+          <Anchor href={doc.fileUrl} target={documentTarget()} rel="noopener" fw={500} style={{ overflowWrap: 'anywhere' }}>{doc.filename}</Anchor>
           <Text size="sm" c="dimmed">{[formatSize(doc.sizeBytes), bookingTitle].filter(Boolean).join(' · ')}</Text>
         </Stack>
         <Group>

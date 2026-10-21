@@ -64,8 +64,32 @@ test('different user triggers clear', async () => {
   expect(await next.claimOfflineData(qc, 'user-b')).toBe(true)
 
   expect(qc.getQueryCache().getAll()).toHaveLength(0)
-  expect(store.size).toBe(0)
+  expect([...store.values()]).toEqual(['user-b']) // A's snapshot is gone; only the new owner remains
   expect(cachesMock.delete).toHaveBeenCalledWith('documents')
+})
+
+test('a different user wipes the offline documents even without a query snapshot', async () => {
+  const first = await freshSession()
+  await first.claimOfflineData(seeded(), 'user-a')
+  expect([...store.values()]).toEqual(['user-a']) // the owner key alone, no snapshot
+
+  const next = await freshSession()
+  const qc = seeded()
+  expect(await next.claimOfflineData(qc, 'user-b')).toBe(true)
+  expect(cachesMock.delete).toHaveBeenCalledWith('documents')
+  expect([...store.values()]).toEqual(['user-b'])
+})
+
+test('a snapshot written while clearing is not tagged with the previous owner', async () => {
+  const { claimOfflineData, clearOfflineData, createPersister } = await freshSession()
+  const qc = seeded()
+  await claimOfflineData(qc, 'user-a')
+  const persister = createPersister()
+  // Like PersistQueryClientProvider: every cache event takes a snapshot.
+  qc.getQueryCache().subscribe(() => void persister.persistClient(snapshot))
+  await clearOfflineData(qc)
+  await vi.waitFor(async () => expect(await persister.restoreClient()).toBeDefined())
+  expect(await persister.restoreClient()).not.toHaveProperty('ownerId', 'user-a')
 })
 
 test('the same user keeps the restored data', async () => {
@@ -79,7 +103,7 @@ test('the same user keeps the restored data', async () => {
   expect(await next.claimOfflineData(qc, 'user-a')).toBe(false)
 
   expect(qc.getQueryData(['trips'])).toEqual([{ id: 't1' }])
-  expect(store.size).toBe(1)
+  expect(store.size).toBe(2) // snapshot and owner
   expect(cachesMock.delete).not.toHaveBeenCalled()
 })
 
