@@ -14,21 +14,28 @@ class SpaWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // No caching resolver: its cache is unbounded and the fallback would key it by every requested path.
         // Vite fingerprints these; a missing one is a real 404, never index.html cached as immutable
         registry.addResourceHandler("/assets/**").addResourceLocations("classpath:/static/assets/")
                 .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable());
         registry.addResourceHandler("/**").addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.noCache())
-                .resourceChain(true).addResolver(new PathResourceResolver() {
+                .resourceChain(false).addResolver(new PathResourceResolver() {
                     @Override
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
                         Resource found = super.getResource(resourcePath, location);
-                        if (found == null && !resourcePath.startsWith("api/")
-                                && !resourcePath.startsWith("actuator/")) {
+                        if (found == null && isClientRoute(resourcePath)) {
                             return location.createRelative("index.html");
                         }
                         return found;
                     }
                 });
+    }
+
+    // Backend namespaces and file-like paths (favicon.ico, foo.map) are real 404s, not client routes
+    private static boolean isClientRoute(String path) {
+        String first = path.split("/", 2)[0];
+        String last = path.substring(path.lastIndexOf('/') + 1);
+        return !first.equals("api") && !first.equals("actuator") && !last.contains(".");
     }
 }
