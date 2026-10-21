@@ -136,6 +136,35 @@ class ActivityApiTest extends IntegrationTest {
     }
 
     @Test
+    void movingHighestActivityToShorterDayAppendsAfterItsLast() throws Exception {
+        addId("2027-03-12", "A");
+        addId("2027-03-12", "B");
+        String c = addId("2027-03-12", "C");
+        addId("2027-03-13", "X");
+        mvc.perform(put("/api/activities/" + c).with(me).with(csrf()).contentType(APPLICATION_JSON)
+                        .content(body("2027-03-13", "C", null, null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.position").value(1));
+    }
+
+    @Test
+    void activityOutsideShrunkTripStaysEditableButCannotMoveOutside() throws Exception {
+        String a = addId("2027-03-11", "Early");
+        mvc.perform(put("/api/trips/" + trip).with(me).with(csrf()).contentType(APPLICATION_JSON)
+                        .content("{\"name\":\"T\",\"destinations\":[\"Roma\"],"
+                                + "\"startDate\":\"2027-03-12\",\"endDate\":\"2027-03-14\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/activities/" + a).with(me).with(csrf()).contentType(APPLICATION_JSON)
+                        .content(body("2027-03-11", "Renamed", null, null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Renamed"));
+        mvc.perform(put("/api/activities/" + a).with(me).with(csrf()).contentType(APPLICATION_JSON)
+                        .content(body("2027-03-10", "Renamed", null, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.date").exists());
+    }
+
+    @Test
     void updateKeepsPositionOnSameDayAndRejectsDateOutsideTrip() throws Exception {
         addId("2027-03-12", "A");
         String b = addId("2027-03-12", "B");

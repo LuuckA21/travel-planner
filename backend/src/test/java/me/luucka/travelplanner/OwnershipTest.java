@@ -67,6 +67,8 @@ class OwnershipTest extends IntegrationTest {
         assertThat(send(userB, method, template, body)).isEqualTo(404);
         assertThat(trips.findById(trip)).isPresent();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM activity", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT title FROM activity WHERE id = ?", String.class, activity))
+                .isEqualTo("Walk");
         // Positive control (last: DELETE rows destroy the fixture): the owner's identical request is not a 404
         assertThat(send(userA, method, template, body)).isNotEqualTo(404);
     }

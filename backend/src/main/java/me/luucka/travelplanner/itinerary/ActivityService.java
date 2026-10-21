@@ -35,12 +35,13 @@ public class ActivityService {
 
     ActivityResponse update(UUID id, UUID userId, ActivityRequest r) {
         Activity a = activities.findByIdAndTripOwnerId(id, userId).orElseThrow(NotFoundException::new);
-        requireWithinTrip(a.getTrip(), r);
         boolean otherDay = !a.getDate().equals(r.date());
-        a.update(r);
         if (otherDay) {
+            requireWithinTrip(a.getTrip(), r);
+            // Before mutating: the query auto-flushes and would count this activity in its new day
             a.setPosition(activities.nextPosition(a.getTrip().getId(), r.date()));
         }
+        a.update(r);
         return response(a);
     }
 
