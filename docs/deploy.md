@@ -153,7 +153,20 @@ Run all of this as `travel`.
 
 ## Updating after a new version
 
-New versions arrive as commits on `main`. Run:
+New versions arrive as commits on `main`.
+
+**Before updating, check that CI is green** on the latest `main` commit (GitHub → Actions, workflow "CI"). Update only when all four jobs pass:
+
+| Job | What it checks |
+|---|---|
+| `backend` | `./mvnw verify`: all backend tests against a real PostgreSQL |
+| `frontend` | lint, typecheck, unit tests and production build of the PWA |
+| `deploy-scripts` | `shellcheck` on every script in `deploy/`, and `update-test.sh`, which exercises `update.sh` (up to date, success, failed backup, unhealthy version with and without migrations, not on `main`) |
+| `e2e` | builds the Docker image, starts the stack with `smoke-test.sh`, and runs the Playwright test, offline part included |
+
+A red `deploy-scripts` means `update.sh` itself may misbehave: do not run it until that job is fixed. You can also run the script test on any machine with git and bash: `bash deploy/update-test.sh`. It needs no Docker, and it ends with `UPDATE TEST OK`.
+
+Then run:
 
 ```bash
 ~/travel-planner/deploy/update.sh
