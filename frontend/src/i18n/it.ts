@@ -5,6 +5,9 @@ export const m = {
     loading: 'Caricamento…',
     networkError: 'Impossibile contattare il server. Controlla la connessione.',
   },
+  itinerary: {
+    day: 'Giorno',
+  },
   dashboard: {
     title: 'I miei viaggi',
   },
