@@ -153,34 +153,32 @@ Run all of this as `travel`.
 
 ## Updating after a new version
 
-New versions arrive as commits on `main`.
+New versions arrive as commits on `main`. Run:
 
 ```bash
-cd ~/travel-planner/deploy
-git log -1 --oneline > ~/last-deployed.txt     # remember what is running now
-./backup.sh                                    # backup first: must end with "BACKUP OK"
-git pull
-docker compose up -d --build
-docker compose ps
-curl -s http://<APP_BIND_IP>:8081/actuator/health
+~/travel-planner/deploy/update.sh
 ```
 
-- The `app` container is rebuilt and restarted. The database and the uploaded files are in volumes and are kept.
-- Database migrations (Flyway) run by themselves when the app starts. If the app does not come up, check `docker compose logs --tail 100 app`.
-- `.env` and `backup.env` are not in git, so `git pull` never touches them. If a new version needs a new setting, compare with `git diff HEAD@{1} -- .env.example backup.env.example` and add the new variables to your files.
+The script runs these steps in order and stops at the first one that fails:
+
+1. Checks that the checkout is on `main`, then fetches. If nothing is new, it says so and stops.
+2. Runs `./backup.sh`. A failed backup stops the update before anything changes.
+3. Runs `git pull` (fast-forward only). It also warns if `.env.example` or `backup.env.example` changed, so you can add new variables to your `.env` / `backup.env`.
+4. Runs `docker compose up -d --build --wait`, which waits until the app and the database report healthy.
+5. Removes the dangling images left by previous builds.
+
+The last line is `UPDATE OK` or `UPDATE FAILED (exit N)`.
+
+- The database and the uploaded files are in volumes and are kept. Database migrations (Flyway) run by themselves when the app starts.
 - Installed apps on phones show "Nuova versione disponibile · Aggiorna" the next time they open. Tap it to load the new version.
-- Free the disk space taken by old images from time to time: `docker image prune -f`.
+- To be alerted when an update fails (optional), add `UPDATE_PING_URL=https://hc-ping.com/<uuid>` to `backup.env`.
 
 ### If an update goes wrong
 
-Go back to the previous version:
+The script never rolls back by itself. When the new version does not become healthy, it prints:
 
-```bash
-git checkout "$(cut -d' ' -f1 ~/last-deployed.txt)"
-docker compose up -d --build
-```
-
-This is enough when the new version added no database migration. If it did (new files under `backend/src/main/resources/db/migration/` in `git diff --stat <old>..HEAD`), the old code may not start against the migrated database. In that case, restore the backup you took before the update (operations.md §8) on top of the old version.
+- where to look: `docker compose logs --tail 100 app`;
+- how to go back. With no database migration in the update, it prints the exact command, for example `git checkout <old> && docker compose up -d --build --wait`. With a migration, it warns that the old code may not start against the migrated database. In that case, restore the backup the script took just before the update (operations.md §8) on top of the old version.
 
 When the problem is fixed upstream, return to the latest version with `git checkout main && git pull && docker compose up -d --build`.
 
