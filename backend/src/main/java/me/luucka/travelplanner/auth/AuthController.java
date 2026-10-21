@@ -45,7 +45,7 @@ class AuthController {
     @PostMapping("/login")
     MeResponse login(@Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
         String email = AuthService.normalizeEmail(body.email());
-        rateLimiter.check("login-ip:" + request.getRemoteAddr(), RateLimiter.Limit.LOGIN);
+        rateLimiter.check("login-ip:" + ClientIp.of(request), RateLimiter.Limit.LOGIN);
         rateLimiter.check("login-email:" + email, RateLimiter.Limit.LOGIN);
         Authentication auth = authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(email, body.password()));
@@ -64,7 +64,7 @@ class AuthController {
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     void register(@Valid @RequestBody RegisterRequest body, HttpServletRequest request) {
-        rateLimiter.check("register-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
+        rateLimiter.check("register-ip:" + ClientIp.of(request), RateLimiter.Limit.SENSITIVE);
         authService.register(body);
     }
 
@@ -77,14 +77,14 @@ class AuthController {
     @PostMapping("/resend-verification")
     @ResponseStatus(HttpStatus.ACCEPTED)
     void resendVerification(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
-        rateLimiter.check("resend-verification-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
+        rateLimiter.check("resend-verification-ip:" + ClientIp.of(request), RateLimiter.Limit.SENSITIVE);
         authService.resendVerification(body.email());
     }
 
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.ACCEPTED)
     void forgotPassword(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
-        rateLimiter.check("forgot-password-ip:" + request.getRemoteAddr(), RateLimiter.Limit.SENSITIVE);
+        rateLimiter.check("forgot-password-ip:" + ClientIp.of(request), RateLimiter.Limit.SENSITIVE);
         authService.forgotPassword(body.email());
     }
 

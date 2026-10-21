@@ -24,12 +24,12 @@ public class RateLimiter {
         }
     }
 
-    // Unused keys are evicted after one window, by which time their bucket would be full again anyway.
+    // Unused keys are evicted after one window (their bucket would be full again); the size cap bounds attacker-chosen keys.
     private final Cache<String, Bucket> login = cacheFor(Limit.LOGIN);
     private final Cache<String, Bucket> sensitive = cacheFor(Limit.SENSITIVE);
 
     private static Cache<String, Bucket> cacheFor(Limit limit) {
-        return Caffeine.newBuilder().expireAfterAccess(limit.window).build();
+        return Caffeine.newBuilder().maximumSize(100_000).expireAfterAccess(limit.window).build();
     }
 
     public void check(String key, Limit limit) {

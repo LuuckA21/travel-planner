@@ -51,6 +51,15 @@ class RateLimitTest extends IntegrationTest {
         mvc.perform(login("other@example.it", "203.0.113.2")).andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void spoofedLeftmostForwardedForDoesNotBypassIpLimit() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(login("a" + i + "@example.it", "198.51.100." + i + ", 203.0.113.9"))
+                    .andExpect(status().isUnauthorized());
+        }
+        mvc.perform(login("a11@example.it", "198.51.100.200, 203.0.113.9")).andExpect(status().isTooManyRequests());
+    }
+
     private MockHttpServletRequestBuilder forgot() {
         return post("/api/auth/forgot-password").with(csrf())
                 .contentType(APPLICATION_JSON).content("{\"email\":\"luca@example.it\"}");

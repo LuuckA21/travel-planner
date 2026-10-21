@@ -18,7 +18,8 @@ server:
   servlet:
     session:
       timeout: 30d
-  # Forwarded headers (client IP, scheme) are trusted because ufw restricts the port to NPM (spec section 3).
+  # Forwarded headers are trusted because ufw restricts the port to NPM (spec section 3). NPM appends to a client-supplied
+  # X-Forwarded-For, so rate limiting uses its rightmost entry (see ClientIp), not the remote address derived from it.
   forward-headers-strategy: framework
 
 management:
