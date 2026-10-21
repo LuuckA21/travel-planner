@@ -81,7 +81,7 @@ $EDITOR backup.env          # Swiss Backup S3 endpoint, bucket, keys; RESTIC_PAS
 ```
 
 - Save `RESTIC_PASSWORD` in your password manager. Without it the backups cannot be read.
-- Add the two cron lines and, ideally, a healthchecks.io monitor (operations.md §7).
+- Schedule the backups with cron: see [Scheduling backups with cron](#scheduling-backups-with-cron) below.
 - Test a restore once now, as a separate project (operations.md §8).
 
 ### 8. Reboot test (recommended)
@@ -94,6 +94,62 @@ curl -s http://<APP_BIND_IP>:8081/actuator/health
 ```
 
 `loginctl enable-linger` starts the rootless Docker daemon without a login, and the containers have `restart: unless-stopped`.
+
+## Scheduling backups with cron
+
+Run all of this as `travel`.
+
+1. **Check that the backup works by hand first.** `./backup.sh` must end with `BACKUP OK` (step 7).
+
+2. **Find two values for the crontab.**
+
+   ```bash
+   id -u                       # your uid, e.g. 1001
+   command -v docker           # e.g. /usr/bin/docker; if it is in ~/bin, add that folder to PATH below
+   ```
+
+3. **Simulate cron's minimal environment.** Cron starts with almost no environment variables, so this catches PATH or `DOCKER_HOST` problems before the first night. Replace `<uid>`, then run:
+
+   ```bash
+   env -i HOME="$HOME" PATH=/usr/local/bin:/usr/bin:/bin \
+     DOCKER_HOST=unix:///run/user/<uid>/docker.sock \
+     sh -c 'cd "$HOME/travel-planner/deploy" && ./backup-check.sh'
+   ```
+
+   It must end with `BACKUP CHECK OK`.
+
+4. **Add the jobs.** Run `crontab -e` (choose an editor the first time) and add these lines, replacing `<uid>`:
+
+   ```cron
+   PATH=/usr/local/bin:/usr/bin:/bin
+   DOCKER_HOST=unix:///run/user/<uid>/docker.sock
+   # every night at 03:15: database + files
+   15 3 * * * cd "$HOME/travel-planner/deploy" && ./backup.sh >> "$HOME/backup.log" 2>&1
+   # every Sunday at 04:45: integrity check of the backup repository
+   45 4 * * 0 cd "$HOME/travel-planner/deploy" && ./backup-check.sh >> "$HOME/backup.log" 2>&1
+   ```
+
+   The times use the server's time zone (`timedatectl` shows it). Save, then check with `crontab -l`.
+
+5. **Check the next morning.**
+
+   ```bash
+   tail -n 20 ~/backup.log                        # the last run must end with "BACKUP OK"
+   docker compose run --rm backup snapshots       # a new "db" and a new "files" snapshot
+   ```
+
+6. **Get an alert when a backup fails (recommended).** Cron writes everything to the log and sends no email, so a broken job would go unnoticed.
+   - On healthchecks.io (free), create two checks:
+     - daily, with a grace time of a few hours;
+     - weekly.
+   - Put their ping URLs in `backup.env`, without quotes:
+
+     ```
+     BACKUP_PING_URL=https://hc-ping.com/<uuid-daily>
+     BACKUP_CHECK_PING_URL=https://hc-ping.com/<uuid-weekly>
+     ```
+
+   The scripts ping the URL on success and `<URL>/fail` on failure. If no ping arrives at all, healthchecks.io alerts you too, for example when the server is down. See operations.md §7.
 
 ## Updating after a new version
 
