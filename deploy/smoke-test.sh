@@ -22,11 +22,13 @@ fail() { echo "SMOKE FAIL: $*" >&2; dc logs --tail 60 app >&2 || true; exit 1; }
 
 dc up -d --build
 
+health=
 for _ in $(seq 1 90); do
-  curl -fs "$BASE/actuator/health" | grep -q '"status":"UP"' && break
+  health=$(curl -fs "$BASE/actuator/health" || true)
+  [[ $health == *'"status":"UP"'* ]] && break
   sleep 2
 done
-curl -fs "$BASE/actuator/health" | grep -q '"status":"UP"' || fail "app did not become healthy"
+[[ $health == *'"status":"UP"'* ]] || fail "app did not become healthy"
 
 [ "$(dc run --rm -T --no-deps --entrypoint id app -u)" = 10001 ] || fail "app does not run as uid 10001"
 
@@ -44,7 +46,10 @@ post() { # path json [extra curl args]
 }
 
 [ "$(post /api/auth/login '{"email":"smoke@example.it","password":"supersecret1"}')" = 200 ] || fail "login failed"
-curl -fs "$BASE/" | grep -qi '<!doctype html' || fail "GET / is not HTML"
+index=$(curl -fs "$BASE/") || fail "GET / failed"
+shopt -s nocasematch
+[[ $index == *'<!doctype html'* ]] || fail "GET / is not HTML"
+shopt -u nocasematch
 [ "$(curl -fs -b "$JAR" "$BASE/api/trips")" = '[]' ] || fail "GET /api/trips is not []"
 
 # Rate limiting keys on the rightmost X-Forwarded-For entry (the hop NPM appends), not on a spoofed first one.
