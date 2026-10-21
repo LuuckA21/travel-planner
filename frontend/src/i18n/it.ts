@@ -52,6 +52,22 @@ export const m = {
     edit: 'Modifica',
     empty: 'Non hai ancora nessun viaggio. Pianifica il prossimo!',
   },
+  trip: {
+    inDays: (n: number) => (n === 1 ? 'tra 1 giorno' : `tra ${n} giorni`),
+    dayOf: (n: number, total: number) => `Giorno ${n} di ${total}`,
+    tabs: {
+      summary: 'Riepilogo',
+      itinerary: 'Itinerario',
+      bookings: 'Prenotazioni',
+      documents: 'Documenti',
+      checklists: 'Liste',
+    },
+    nav: 'Sezioni del viaggio',
+    nextActivities: 'Prossime attività',
+    nextBooking: 'Prossima prenotazione',
+    nothingNext: 'Niente in programma.',
+    comingSoon: 'Presto disponibile.',
+  },
   tripForm: {
     newTitle: 'Nuovo viaggio',
     editTitle: 'Modifica viaggio',
