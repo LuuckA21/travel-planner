@@ -2,7 +2,7 @@ import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { TripSummary } from '../api/types'
 import { m } from '../i18n/it'
@@ -80,12 +80,16 @@ test('logout on a network error shows the Italian error and stays on the dashboa
     <MantineProvider>
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
-          <DashboardPage />
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/login" element={<p>login page</p>} />
+          </Routes>
         </MemoryRouter>
       </QueryClientProvider>
     </MantineProvider>,
   )
-  await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(await screen.findByRole('button', { name: m.auth.logout }))
+  await userEvent.setup().click(await screen.findByRole('button', { name: m.auth.logout }))
   expect(await screen.findByRole('alert')).toHaveTextContent(m.common.networkError)
   expect(screen.getByRole('heading', { name: m.dashboard.title })).toBeInTheDocument()
+  expect(screen.queryByText('login page')).not.toBeInTheDocument()
 })
