@@ -1,6 +1,8 @@
 package me.luucka.travelplanner.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -14,15 +16,17 @@ import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import me.luucka.travelplanner.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.test.web.support.WebTestUtils;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 class LoginTest extends IntegrationTest {
 
     static final String EMAIL = "luca@example.it";
     static final String PASSWORD = "supersecret1";
+
+    @MockitoSpyBean UserAccountRepository users;
 
     private MockHttpServletRequestBuilder login(String email, String password) {
         return post("/api/auth/login").with(csrf())
@@ -79,6 +83,14 @@ class LoginTest extends IntegrationTest {
     }
 
     @Test
+    void userLookupFailureIs500NotUnauthorized() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database down")).when(users).findByEmail(any());
+        mvc.perform(login(EMAIL, PASSWORD))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
     void wrongPasswordIs401() throws Exception {
         testUsers.create(EMAIL, PASSWORD);
         mvc.perform(login(EMAIL, "wrongpassword"))
@@ -110,7 +122,10 @@ class LoginTest extends IntegrationTest {
     void stateChangingRequestWithoutCsrfIs403() throws Exception {
         testUsers.create(EMAIL, PASSWORD);
         Cookie session = testUsers.login(EMAIL, PASSWORD);
-        mvc.perform(post("/api/auth/logout").cookie(session)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/auth/logout").cookie(session))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("CSRF"));
         mvc.perform(get("/api/auth/me").cookie(session)).andExpect(status().isOk());
     }
 
@@ -143,11 +158,7 @@ class LoginTest extends IntegrationTest {
     @Test
     void spaCsrfCookieIsIssuedAndAcceptedAsHeader() throws Exception {
         testUsers.create(EMAIL, PASSWORD);
-        // csrf() elsewhere swaps the shared CsrfFilter's repository for a session-based one; restore the real one
-        Cookie xsrf = mvc.perform(get("/api/auth/config").with(request -> {
-                    WebTestUtils.setCsrfTokenRepository(request, CookieCsrfTokenRepository.withHttpOnlyFalse());
-                    return request;
-                }))
+        Cookie xsrf = mvc.perform(get("/api/auth/config"))
                 .andReturn().getResponse().getCookie("XSRF-TOKEN");
 
         assertThat(xsrf).isNotNull();

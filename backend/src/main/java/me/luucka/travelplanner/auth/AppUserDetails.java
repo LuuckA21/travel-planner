@@ -10,6 +10,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 /** The authenticated principal, stored in the session; the password hash is erased after login. */
 public class AppUserDetails implements UserDetails, CredentialsContainer {
 
+    // Java-serialized into spring_session_attributes; keep stable so stored sessions survive field changes
+    private static final long serialVersionUID = 1L;
+
     private final UUID id;
     private final String email;
     private final boolean emailVerified;

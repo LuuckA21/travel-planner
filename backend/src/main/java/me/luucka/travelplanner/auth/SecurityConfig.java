@@ -17,7 +17,10 @@ import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.savedrequest.NullRequestCache;
@@ -39,14 +42,27 @@ class SecurityConfig {
                                 "/api/auth/reset-password", "/api/auth/config", "/actuator/health").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
-                // 401 as a Problem Detail, rendered by ApiExceptionHandler
-                .exceptionHandling(e -> e.authenticationEntryPoint(
-                        (request, response, ex) -> resolver.resolveException(request, response, null, ex)))
+                // 401 and CSRF 403 as Problem Details, rendered by ApiExceptionHandler
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(
+                                (request, response, ex) -> resolver.resolveException(request, response, null, ex))
+                        .accessDeniedHandler(accessDeniedHandler(resolver)))
                 // No session per unauthenticated API call just to remember the request
                 .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .logout(logout -> logout.logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)));
         return http.build();
+    }
+
+    private static AccessDeniedHandler accessDeniedHandler(HandlerExceptionResolver resolver) {
+        AccessDeniedHandler fallback = new AccessDeniedHandlerImpl();
+        return (request, response, ex) -> {
+            if (ex instanceof CsrfException) {
+                resolver.resolveException(request, response, null, ex);
+            } else {
+                fallback.handle(request, response, ex);
+            }
+        };
     }
 
     private static Filter eagerCsrfToken() {

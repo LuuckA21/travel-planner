@@ -7,8 +7,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,6 +50,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     ProblemDetail handleBadCredentials() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+    }
+
+    // Infrastructure failure while authenticating (e.g. DB down), not a client error
+    @ExceptionHandler(AuthenticationServiceException.class)
+    ProblemDetail handleAuthenticationService(AuthenticationServiceException ex) {
+        logger.error("Authentication failed internally", ex);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Internal error");
+    }
+
+    // Reached from the security access-denied handler
+    @ExceptionHandler(CsrfException.class)
+    ProblemDetail handleCsrf() {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Missing or invalid CSRF token");
+        problem.setProperty("code", "CSRF");
+        return problem;
     }
 
     // Also reached from the security entry point for unauthenticated requests
