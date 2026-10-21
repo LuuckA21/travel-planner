@@ -10,6 +10,7 @@ import SignupPage from './auth/SignupPage'
 import VerifyEmailPage from './auth/VerifyEmailPage'
 import { queryClient } from './queryClient'
 import DashboardPage from './trips/DashboardPage'
+import BookingDetail from './trips/BookingDetail'
 import TripFormPage from './trips/TripFormPage'
 import TripPage from './trips/TripPage'
 
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/trips/new" element={<TripFormPage />} />
               <Route path="/trips/:id/edit" element={<TripFormPage />} />
+              <Route path="/trips/:id/bookings/:bookingId" element={<BookingDetail />} />
               <Route path="/trips/:id/:tab?" element={<TripPage />} />
             </Route>
           </Routes>

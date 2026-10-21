@@ -41,3 +41,6 @@ const rangeFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'shor
 
 export const formatDateRange = (start: string, end: string) =>
   `${rangeFmt.format(parse(start))} – ${rangeFmt.format(parse(end))}`
+
+// Local date-time (YYYY-MM-DDTHH:mm[:ss]) -> "Mer 10 mar · 10:00", sliced rather than parsed so no time zone is applied.
+export const formatDateTime = (iso: string) => `${formatDayHeader(iso.slice(0, 10))} · ${iso.slice(11, 16)}`
