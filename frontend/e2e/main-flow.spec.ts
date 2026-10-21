@@ -17,14 +17,22 @@ const cacheHolds = (page: Page, ...texts: string[]) =>
           const db = open.result
           if (!db.objectStoreNames.contains('keyval')) return resolve(false)
           const req = db.transaction('keyval').objectStore('keyval').get('travel-planner-query-cache')
-          req.onsuccess = () => resolve(typeof req.result === 'string' && needles.every((n) => req.result.includes(n)))
+          req.onsuccess = () => {
+            if (typeof req.result !== 'string') return resolve(false)
+            const queries: { queryKey: unknown[]; state: { data: unknown } }[] = JSON.parse(req.result).clientState.queries
+            // One trip query must hold everything: an earlier attempt's trip must not satisfy the check.
+            resolve(queries.some((q) => q.queryKey[0] === 'trip' && needles.every((n) => JSON.stringify(q.state.data).includes(n))))
+          }
           req.onerror = () => resolve(false)
         }
       }),
     texts,
   )
 
-test('plan a trip, then use it offline', async ({ page, context }) => {
+test('plan a trip, then use it offline', async ({ page, context }, testInfo) => {
+  // The database is shared by all attempts of a retried run, so every attempt plans its own trip.
+  const tripName = `Guatemala e Belize ${testInfo.retry}-${Date.now()}`
+  const tripCard = () => page.getByRole('heading', { name: tripName }).locator('..')
   const today = new Date()
   const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
@@ -40,14 +48,14 @@ test('plan a trip, then use it offline', async ({ page, context }) => {
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
 
   await page.getByRole('button', { name: 'Nuovo viaggio' }).or(page.getByRole('link', { name: 'Nuovo viaggio' })).first().click()
-  await page.getByRole('textbox', { name: 'Nome' }).fill('Guatemala e Belize')
+  await page.getByRole('textbox', { name: 'Nome' }).fill(tripName)
   await page.getByRole('textbox', { name: 'Destinazione 1' }).fill('Guatemala')
   await page.getByLabel('Data di inizio').fill(iso(today))
   await page.getByLabel('Data di fine').fill(iso(tomorrow))
   await page.getByRole('button', { name: 'Salva' }).click()
-  await expect(page.getByRole('heading', { name: 'Guatemala e Belize' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: tripName })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Oggi' }).click()
+  await tripCard().getByRole('link', { name: 'Oggi' }).click()
   await page.getByRole('button', { name: /Aggiungi attività/ }).first().click()
   await page.getByLabel('Titolo').fill('Visita al sito')
   await page.getByLabel('Luogo').fill('Tikal')
@@ -65,18 +73,18 @@ test('plan a trip, then use it offline', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Rendi disponibili offline' }).click()
   await expect(page.getByRole('status')).toHaveText('1 file disponibili offline')
 
-  await expect(async () => expect(await cacheHolds(page, 'Tikal', 'ticket.pdf')).toBe(true)).toPass({ intervals: [500] })
+  await expect(async () => expect(await cacheHolds(page, tripName, 'Tikal', 'ticket.pdf')).toBe(true)).toPass({ intervals: [500] })
 
   // Back on the dashboard, with the trip list and the trip cached.
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Guatemala e Belize' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: tripName })).toBeVisible()
 
   await context.setOffline(true)
   await page.reload()
   await expect(page.getByText(/^Sei offline/)).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Guatemala e Belize' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: tripName })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Oggi' }).click()
+  await tripCard().getByRole('link', { name: 'Oggi' }).click()
   await expect(page.getByText('Tikal')).toBeVisible()
   await expect(page.getByRole('button', { name: /Aggiungi attività/ }).first()).toBeDisabled()
 

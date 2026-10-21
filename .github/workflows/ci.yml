@@ -64,7 +64,8 @@ jobs:
           if-no-files-found: ignore
       - name: App logs
         if: failure()
-        run: docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml logs app
+        # The smoke script deletes its env file when it fails itself.
+        run: '[ ! -f "$SMOKE_DIR/env" ] || docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml logs app'
       - name: Stop the stack
         if: always()
-        run: docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml down -v
+        run: '[ ! -f "$SMOKE_DIR/env" ] || docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml down -v'
