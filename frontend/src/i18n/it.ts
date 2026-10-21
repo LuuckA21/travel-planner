@@ -97,6 +97,20 @@ export const m = {
       'Formato non supportato. Puoi caricare file PDF, JPEG, PNG o WebP. Se è una foto di iPhone, esportala in JPEG (Impostazioni > Fotocamera > Formati > Più compatibile).',
     tooLarge: 'Il file è troppo grande (massimo 25 MB).',
   },
+  checklists: {
+    empty: 'Nessuna lista.',
+    newList: 'Nuova lista',
+    addList: 'Aggiungi lista',
+    newItem: 'Nuova voce',
+    rename: 'Rinomina lista',
+    save: 'Salva',
+    cancel: 'Annulla',
+    delete: 'Elimina lista',
+    deleteConfirm: 'Conferma eliminazione',
+    editItem: 'Modifica voce',
+    deleteItem: 'Elimina voce',
+    progress: 'Avanzamento',
+  },
   dashboard: {
     title: 'I miei viaggi',
     newTrip: 'Nuovo viaggio',
@@ -121,7 +135,6 @@ export const m = {
     nextActivities: 'Prossime attività',
     nextBooking: 'Prossima prenotazione',
     nothingNext: 'Niente in programma.',
-    comingSoon: 'Presto disponibile.',
   },
   tripForm: {
     newTitle: 'Nuovo viaggio',

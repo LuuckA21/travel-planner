@@ -6,19 +6,17 @@ import type { TripDetail } from '../api/types'
 import { m } from '../i18n/it'
 import { daysUntil, dayNumber, formatDateRange, todayLocal, tripStatus } from '../lib/dates'
 import BookingsTab from './BookingsTab'
+import ChecklistsTab from './ChecklistsTab'
 import DocumentsTab from './DocumentsTab'
 import ItineraryTab from './ItineraryTab'
 import SummaryTab from './SummaryTab'
-
-// Task 23 replaces this placeholder.
-const Soon = () => <Text c="dimmed">{m.trip.comingSoon}</Text>
 
 const tabs = {
   summary: SummaryTab,
   itinerary: ItineraryTab,
   bookings: BookingsTab,
   documents: DocumentsTab,
-  checklists: Soon,
+  checklists: ChecklistsTab,
 } satisfies Record<string, ComponentType<{ trip: TripDetail }>>
 
 type Tab = keyof typeof tabs

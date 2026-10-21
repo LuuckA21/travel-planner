@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from './client'
-import type { Activity, Booking, BookingType, DocumentMeta, TripDetail, TripSummary } from './types'
+import type { Activity, Booking, BookingType, Checklist, ChecklistItem, DocumentMeta, TripDetail, TripSummary } from './types'
 
 export interface TripInput {
   name: string
@@ -145,6 +145,67 @@ export function useDeleteDocument(tripId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFetch<void>(`/documents/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useSaveChecklist(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id?: string; name: string }) =>
+      apiFetch<Checklist>(id ? `/checklists/${id}` : `/trips/${tripId}/checklists`, {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify({ name }),
+      }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useDeleteChecklist(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/checklists/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useAddItem(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ checklistId, text }: { checklistId: string; text: string }) =>
+      apiFetch<ChecklistItem>(`/checklists/${checklistId}/items`, { method: 'POST', body: JSON.stringify({ text }) }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function usePatchItem(tripId: string) {
+  const qc = useQueryClient()
+  const key = ['trip', tripId]
+  return useMutation({
+    mutationFn: ({ id, ...patch }: { id: string; text?: string; done?: boolean }) =>
+      apiFetch<ChecklistItem>(`/checklist-items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    onMutate: async ({ id, ...patch }) => {
+      await qc.cancelQueries({ queryKey: key })
+      const previous = qc.getQueryData<TripDetail>(key)
+      if (previous) {
+        qc.setQueryData<TripDetail>(key, {
+          ...previous,
+          checklists: previous.checklists.map((c) => ({ ...c, items: c.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
+        })
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous)
+    },
+    onSettled: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useDeleteItem(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/checklist-items/${id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateTrip(qc, tripId),
   })
 }
