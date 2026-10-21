@@ -18,10 +18,11 @@ public abstract class IntegrationTest {
 
     @Autowired protected MockMvc mvc;
     @Autowired protected JdbcTemplate jdbc;
+    @Autowired protected TestUsers testUsers;
 
     // Grows as tables are added: TRUNCATE a, b, c CASCADE
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE spring_session, spring_session_attributes CASCADE");
+        jdbc.execute("TRUNCATE spring_session, spring_session_attributes, user_account, auth_token CASCADE");
     }
 }
