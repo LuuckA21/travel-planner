@@ -39,10 +39,9 @@ jobs:
   e2e:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    env:
-      SMOKE_DIR: ${{ runner.temp }}/smoke
     steps:
       - uses: actions/checkout@v4
+      - run: echo "SMOKE_DIR=$RUNNER_TEMP/smoke" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -56,6 +55,16 @@ jobs:
         working-directory: frontend
       - run: npm run e2e
         working-directory: frontend
+      - name: Upload Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: frontend/test-results
+          if-no-files-found: ignore
+      - name: App logs
+        if: failure()
+        run: docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml logs app
       - name: Stop the stack
         if: always()
         run: docker compose -p tp-smoke --env-file "$SMOKE_DIR/env" -f deploy/docker-compose.yml down -v
