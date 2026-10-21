@@ -12,7 +12,7 @@ Setup assumed: server B runs Debian with rootless Docker under the dedicated use
 apt-get install -y uidmap dbus-user-session git ufw curl
 adduser --disabled-password --gecos "" travel
 loginctl enable-linger travel
-ufw allow from <NPM-IP> to any port 8081 proto tcp
+ufw allow from <NPM-IP> to any port <APP_PORT> proto tcp     # 8081 unless you change APP_PORT
 ufw allow OpenSSH && ufw enable
 ```
 
@@ -37,6 +37,7 @@ $EDITOR .env
 Fill in:
 
 - `APP_BIND_IP`: server B's internal IP, the one NPM reaches.
+- `APP_PORT`: the port the app is published on (default `8081`). Pick a free one if 8081 is taken, and use the same port in the ufw rule and in NPM.
 - `APP_BASE_URL`: the public URL, for example `https://viaggi.example.it`.
 - The SMTP settings: host, port, user, password, `MAIL_FROM`.
 - A strong database password, set in **both** `POSTGRES_PASSWORD` and `DB_PASSWORD`. Use the same value in both, and write any `$` as `$$`.
@@ -48,7 +49,7 @@ See operations.md §2.
 ```bash
 docker compose up -d --build
 docker compose ps                                       # app and db "running", db "healthy"
-curl -s http://<APP_BIND_IP>:8081/actuator/health       # {"status":"UP",...}
+curl -s http://<APP_BIND_IP>:<APP_PORT>/actuator/health  # {"status":"UP",...}
 ```
 
 The first build takes a few minutes, because it downloads Node, Maven and the dependencies.
@@ -58,7 +59,7 @@ The first build takes a few minutes, because it downloads Node, Maven and the de
 Add a Proxy Host:
 
 - Domain: the host name from `APP_BASE_URL`.
-- Forward to: `http`, `<APP_BIND_IP>`, port `8081`.
+- Forward to: `http`, `<APP_BIND_IP>`, port `<APP_PORT>` (default `8081`).
 - SSL tab: Let's Encrypt certificate, Force SSL.
 - Advanced tab: `client_max_body_size 26m;`
 
@@ -90,7 +91,7 @@ Reboot server B once, then check that everything comes back by itself:
 
 ```bash
 docker compose ps
-curl -s http://<APP_BIND_IP>:8081/actuator/health
+curl -s http://<APP_BIND_IP>:<APP_PORT>/actuator/health
 ```
 
 `loginctl enable-linger` starts the rootless Docker daemon without a login, and the containers have `restart: unless-stopped`.
