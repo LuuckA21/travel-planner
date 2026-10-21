@@ -31,6 +31,8 @@ services:
   backup:
     image: restic/restic:0.19.1
     profiles: ["tools"]
+    # Fixed: restic groups snapshots by host, and run containers get a random one, which would stop retention from pruning.
+    hostname: travel-planner-backup
     env_file: ${BACKUP_ENV_FILE:-backup.env}
     volumes:
       - files:/data/files:ro

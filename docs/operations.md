@@ -80,10 +80,12 @@ Create the Swiss Backup S3 bucket and access keys in the Infomaniak panel, then:
 
 ```bash
 cp backup.env.example backup.env && chmod 600 backup.env
-$EDITOR backup.env        # endpoint, bucket, keys, region, and a long random RESTIC_PASSWORD
+$EDITOR backup.env        # endpoint, bucket, keys, region, and a long random RESTIC_PASSWORD (openssl rand -base64 32)
 ./backup.sh               # the first run creates the repository
 ./backup-check.sh
 ```
+
+As in `.env`, a `$` in any value of `backup.env` (password, S3 secret) must be written `$$`.
 
 Keep the `RESTIC_PASSWORD` in a password manager as well. Without it the backups cannot be restored, and nobody can recover it.
 
@@ -94,21 +96,39 @@ docker compose run --rm backup snapshots
 docker compose run --rm backup stats
 ```
 
-## 7. Cron
+## 7. Cron and monitoring
 
-`crontab -e` as the dedicated user:
+`crontab -e` as the dedicated user. Cron has a minimal environment, so set `PATH` and the rootless `DOCKER_HOST` at the top (`id -u` gives `<uid>`; cron does not expand `$(...)`):
 
 ```cron
+PATH=/usr/local/bin:/usr/bin:/bin
 DOCKER_HOST=unix:///run/user/<uid>/docker.sock
 15 3 * * * cd ~/travel-planner/deploy && ./backup.sh >> ~/backup.log 2>&1
 45 4 * * 0 cd ~/travel-planner/deploy && ./backup-check.sh >> ~/backup.log 2>&1
 ```
 
-(`id -u travel` gives `<uid>`.) Each script exits non-zero if any step fails; look at `~/backup.log` now and then, or set `MAILTO=` if the server can send mail.
+Each run writes timestamped lines and ends with `BACKUP OK` or `BACKUP FAILED (exit N)` (`BACKUP CHECK OK` / `BACKUP CHECK FAILED` for the weekly check), and exits non-zero on failure. Because the output is redirected to the log, cron will not mail anything: a failure is silent unless you monitor it.
+
+Recommended: a dead-man monitor such as healthchecks.io (free tier). Create two checks (daily with a grace time of a few hours, weekly), then put their ping URLs in `backup.env` (no quotes):
+
+```
+BACKUP_PING_URL=https://hc-ping.com/<uuid-daily>
+BACKUP_CHECK_PING_URL=https://hc-ping.com/<uuid-weekly>
+```
+
+On success the script requests the URL, on failure `<URL>/fail`. If the server is down, cron does not run, or the scripts never start, the missing ping raises the alert. Without a monitor, check `tail ~/backup.log` regularly.
 
 ## 8. Restore
 
-Test this once right after the first deploy (on a scratch machine or by restoring next to the live data), not on the day you need it. `deploy/backup-test.sh` exercises the same steps against a throwaway stack.
+**Warning: these commands are for an empty database and an empty files volume (a new server, or a separate test project). Never run them against a live installation: the dump would be applied on top of existing data and the files restore overwrites stored documents.**
+
+Test the restore once right after the first deploy, not on the day you need it. On the production server, do it as a separate compose project so nothing touches the live volumes, and start only the database (the app's port 8081 is taken by the live app):
+
+```bash
+export COMPOSE_PROJECT_NAME=tp-restore-test      # separate containers and volumes; unset it afterwards
+```
+
+then follow steps 1 and 2 below (not step 3). Check the result with `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select count(*) from trip"'` and `docker compose run --rm --no-deps -v "$FILES_VOL:/restore-files" --entrypoint ls backup -l /restore-files`, then remove the test with `docker compose --profile tools down -v` and `unset COMPOSE_PROJECT_NAME`. `deploy/backup-test.sh` runs the same steps against a throwaway stack.
 
 On a new server: do sections 1 and 2 up to and including `.env` and `backup.env` (same `POSTGRES_*` values as the original, `RESTIC_PASSWORD` from the password manager), but do not start the app yet.
 
@@ -121,14 +141,16 @@ docker compose up -d --wait db
 docker compose run --rm -T backup dump latest --tag db /db.sql \
   | docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
-# 2. files: into the files volume (named <project>_files, the project is the directory name, "deploy")
-docker compose run --rm --no-deps -v deploy_files:/restore-files \
+# 2. files: into the (empty) files volume. Create it through compose first so it carries compose's labels
+docker compose --profile tools create backup
+FILES_VOL=$(docker volume ls -q --filter label=com.docker.compose.volume=files \
+  --filter label=com.docker.compose.project="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}")
+echo "$FILES_VOL"                                              # must print exactly one name; else check `docker volume ls`
+docker compose run --rm --no-deps -v "$FILES_VOL:/restore-files" \
   backup restore latest:data/files --tag files --target /restore-files
 
 # 3. start everything
 docker compose up -d --build
 ```
 
-To restore an older state use a snapshot id from `snapshots` instead of `latest`.
-
-The database must be empty when the dump is loaded, which it is on a fresh server because the app has not started yet. To inspect files without touching the volume, restore into a host directory instead (`-v "$PWD/restore:/restore" ... --target /restore`); restored files keep owner uid 10001 and mode 600.
+To restore an older state use a snapshot id from `snapshots` instead of `latest`. To inspect files without touching any volume, restore into a host directory instead (`-v "$PWD/restore:/restore" ... --target /restore`); restored files keep owner uid 10001 and mode 600.
