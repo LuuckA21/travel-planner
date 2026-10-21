@@ -35,6 +35,9 @@ class OwnershipTest extends IntegrationTest {
     static final String ACTIVITY_BODY = "{\"date\":\"2027-03-11\",\"title\":\"Y\"}";
     static final String ORDER_BODY = "{\"date\":\"2027-03-11\",\"activityIds\":[\"{activity}\"]}";
     static final String BOOKING_BODY = "{\"type\":\"FLIGHT\",\"title\":\"Y\",\"startAt\":\"2027-03-11T10:00:00\"}";
+    static final String CHECKLIST_BODY = "{\"name\":\"Y\"}";
+    static final String ITEM_BODY = "{\"text\":\"Y\"}";
+    static final String ITEM_PATCH_BODY = "{\"text\":\"Y\",\"done\":true}";
     static final String TRIP_BODY =
             "{\"name\":\"X\",\"destinations\":[\"Roma\"],\"startDate\":\"2027-03-10\",\"endDate\":\"2027-03-12\"}";
 
@@ -50,6 +53,8 @@ class OwnershipTest extends IntegrationTest {
     UUID activity;
     UUID booking;
     UUID document;
+    UUID checklist;
+    UUID item;
     String coverKey;
     RequestPostProcessor userA;
     RequestPostProcessor userB;
@@ -71,6 +76,11 @@ class OwnershipTest extends IntegrationTest {
         jdbc.update("INSERT INTO trip_document (id, trip_id, original_filename, content_type, size_bytes, storage_key)"
                         + " VALUES (?, ?, 'a.pdf', 'application/pdf', ?, ?)", document, trip, PDF.length,
                 storage.store(new ByteArrayInputStream(PDF)));
+        checklist = UUID.randomUUID();
+        jdbc.update("INSERT INTO checklist (id, trip_id, name, position) VALUES (?, ?, 'Bagaglio', 0)", checklist, trip);
+        item = UUID.randomUUID();
+        jdbc.update("INSERT INTO checklist_item (id, checklist_id, text, position) VALUES (?, ?, 'Passaporto', 0)",
+                item, checklist);
         coverKey = storage.store(new ByteArrayInputStream(PNG));
         jdbc.update("UPDATE trip SET cover_storage_key = ? WHERE id = ?", coverKey, trip);
     }
@@ -92,7 +102,13 @@ class OwnershipTest extends IntegrationTest {
                 Arguments.of(HttpMethod.DELETE, "/api/documents/{document}", null),
                 Arguments.of(HttpMethod.PUT, "/api/trips/{trip}/cover", COVER_MULTIPART),
                 Arguments.of(HttpMethod.GET, "/api/trips/{trip}/cover", null),
-                Arguments.of(HttpMethod.DELETE, "/api/trips/{trip}/cover", null));
+                Arguments.of(HttpMethod.DELETE, "/api/trips/{trip}/cover", null),
+                Arguments.of(HttpMethod.POST, "/api/trips/{trip}/checklists", CHECKLIST_BODY),
+                Arguments.of(HttpMethod.PUT, "/api/checklists/{checklist}", CHECKLIST_BODY),
+                Arguments.of(HttpMethod.DELETE, "/api/checklists/{checklist}", null),
+                Arguments.of(HttpMethod.POST, "/api/checklists/{checklist}/items", ITEM_BODY),
+                Arguments.of(HttpMethod.PATCH, "/api/checklist-items/{item}", ITEM_PATCH_BODY),
+                Arguments.of(HttpMethod.DELETE, "/api/checklist-items/{item}", null));
     }
 
     @ParameterizedTest
@@ -107,6 +123,13 @@ class OwnershipTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT title FROM booking WHERE id = ?", String.class, booking))
                 .isEqualTo("Flight");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM trip_document", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM checklist", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT name FROM checklist WHERE id = ?", String.class, checklist))
+                .isEqualTo("Bagaglio");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM checklist_item", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT text FROM checklist_item WHERE id = ?", String.class, item))
+                .isEqualTo("Passaporto");
+        assertThat(jdbc.queryForObject("SELECT done FROM checklist_item WHERE id = ?", Boolean.class, item)).isFalse();
         assertThat(jdbc.queryForObject("SELECT cover_storage_key FROM trip WHERE id = ?", String.class, trip))
                 .isEqualTo(coverKey);
         assertThat(storage.path(coverKey)).exists();
@@ -116,7 +139,8 @@ class OwnershipTest extends IntegrationTest {
 
     private int send(RequestPostProcessor user, HttpMethod method, String template, String body) throws Exception {
         String uri = template.replace("{trip}", trip.toString()).replace("{activity}", activity.toString())
-                .replace("{booking}", booking.toString()).replace("{document}", document.toString());
+                .replace("{booking}", booking.toString()).replace("{document}", document.toString())
+                .replace("{checklist}", checklist.toString()).replace("{item}", item.toString());
         boolean multipart = MULTIPART.equals(body) || COVER_MULTIPART.equals(body);
         var req = !multipart ? request(method, uri)
                 : MULTIPART.equals(body)
