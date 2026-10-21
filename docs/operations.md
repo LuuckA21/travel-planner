@@ -51,7 +51,7 @@ On server A, add a Proxy Host:
 - Domain: the public name from `APP_BASE_URL`; scheme `http`; forward host/port `<internal-IP>` / `8081`.
 - Websockets support: off. Block common exploits: on.
 - SSL tab: request a Let's Encrypt certificate, enable Force SSL.
-- Advanced tab: `client_max_body_size 25m;` (the app's per-file upload limit).
+- Advanced tab: `client_max_body_size 26m;` (the app's 25 MB per-file upload limit plus multipart overhead).
 
 ## 4. Users
 
