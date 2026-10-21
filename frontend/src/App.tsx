@@ -8,8 +8,9 @@ import RequireAuth from './auth/RequireAuth'
 import ResetPasswordPage from './auth/ResetPasswordPage'
 import SignupPage from './auth/SignupPage'
 import VerifyEmailPage from './auth/VerifyEmailPage'
-import { m } from './i18n/it'
 import { queryClient } from './queryClient'
+import DashboardPage from './trips/DashboardPage'
+import TripFormPage from './trips/TripFormPage'
 
 export default function App() {
   return (
@@ -23,7 +24,9 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<RequireAuth />}>
-              <Route path="/" element={<h1>{m.dashboard.title}</h1>} />
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/trips/new" element={<TripFormPage />} />
+              <Route path="/trips/:id/edit" element={<TripFormPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

@@ -9,9 +9,12 @@ afterEach(() => {
   queryClient.clear()
 })
 
-test('renders the dashboard placeholder heading when signed in', async () => {
+test('renders the dashboard heading when signed in', async () => {
   const me = { id: '1', email: 'a@b.it', displayName: 'Ada' }
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(me), { status: 200 })))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/api/trips' ? [] : me), { status: 200 }))),
+  )
   render(<App />)
   expect(await screen.findByRole('heading', { name: m.dashboard.title })).toBeInTheDocument()
 })
