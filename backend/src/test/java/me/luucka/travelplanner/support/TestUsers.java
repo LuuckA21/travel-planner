@@ -13,12 +13,14 @@ import me.luucka.travelplanner.auth.AppUserDetails;
 import me.luucka.travelplanner.auth.AuthService;
 import me.luucka.travelplanner.auth.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
+@Profile("test")
 public class TestUsers {
 
     @Autowired private AuthService authService;
