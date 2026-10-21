@@ -38,7 +38,7 @@ public abstract class IntegrationTest {
     // Grows as tables are added: TRUNCATE a, b, c CASCADE
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE spring_session, spring_session_attributes, user_account, auth_token CASCADE");
+        jdbc.execute("TRUNCATE spring_session, spring_session_attributes, user_account, auth_token, trip, trip_destination CASCADE");
         mailer.clear();
         rateLimiter.reset();
     }
