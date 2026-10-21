@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useIsRestoring, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import type { NavigateFunction } from 'react-router'
 import { ApiError, apiFetch } from '../api/client'
@@ -16,14 +16,28 @@ export const browser = { reload: () => window.location.reload() }
 export function useMe(): { me?: Me; status: MeStatus } {
   const queryClient = useQueryClient()
   // 'always': a truly offline load must fail with NetworkError instead of pausing in 'loading' forever.
-  const q = useQuery({ queryKey: ['me'], queryFn: () => apiFetch<Me>('/auth/me', { signal: AbortSignal.timeout(ME_TIMEOUT_MS) }), retry: false, networkMode: 'always' })
+  const q = useQuery({
+    queryKey: ['me'],
+    queryFn: () => apiFetch<Me>('/auth/me', { signal: AbortSignal.timeout(ME_TIMEOUT_MS) }),
+    retry: false,
+    networkMode: 'always',
+    // Re-render on every outcome, even an unchanged user: the claim gate below waits for one.
+    notifyOnChangeProps: 'all',
+  })
   const expired = q.error instanceof ApiError && q.error.status === 401
   // The session is gone: drop the previous user's cached data so the next user on this device never sees it.
   useEffect(() => {
     if (expired) void clearOfflineData(queryClient)
   }, [expired, queryClient])
   const userId = q.data?.id
-  const answered = q.isFetchedAfterMount
+  // Answered = a /auth/me outcome (success or failure) newer than the cache state once restoring ended. Not
+  // isFetchedAfterMount: hydrating a persisted snapshot after mount bumps the same counters before the server answers.
+  const state = queryClient.getQueryState(['me'])
+  const outcomes = (state?.dataUpdateCount ?? 0) + (state?.errorUpdateCount ?? 0)
+  const [baseline, setBaseline] = useState<number>()
+  const restoring = useIsRestoring()
+  if (!restoring && baseline === undefined) setBaseline(outcomes)
+  const answered = baseline !== undefined && outcomes > baseline
   const [claimed, setClaimed] = useState<string>()
   // Nothing renders until the server has answered (or failed: offline) and the user owns the cached data.
   // Another user's data (restored, or left over before this login) is wiped and the page reloaded.

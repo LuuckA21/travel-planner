@@ -1,5 +1,6 @@
 import { MantineProvider } from '@mantine/core'
-import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { dehydrate, onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, expect, test, vi } from 'vitest'
@@ -11,21 +12,61 @@ import { browser, logout } from './useMe'
 
 const me: Me = { id: '1', email: 'a@b.it', displayName: 'Ada' }
 
+const routes = (
+  <MemoryRouter initialEntries={['/secret']}>
+    <Routes>
+      <Route path="/login" element={<p>login page</p>} />
+      <Route element={<RequireAuth />}>
+        <Route path="/secret" element={<p>secret content</p>} />
+      </Route>
+    </Routes>
+  </MemoryRouter>
+)
+
 function renderProtected(queryClient: QueryClient) {
   render(
     <MantineProvider>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={['/secret']}>
-          <Routes>
-            <Route path="/login" element={<p>login page</p>} />
-            <Route element={<RequireAuth />}>
-              <Route path="/secret" element={<p>secret content</p>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{routes}</QueryClientProvider>
     </MantineProvider>,
   )
+}
+
+// Like the app: the cache is hydrated from a persisted snapshot after RequireAuth has mounted.
+function renderRestored(queryClient: QueryClient, snapshot: QueryClient) {
+  const restored = { timestamp: Date.now(), buster: '', clientState: dehydrate(snapshot) }
+  const persister = { persistClient: async () => {}, restoreClient: async () => restored, removeClient: async () => {} }
+  render(
+    <MantineProvider>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>{routes}</PersistQueryClientProvider>
+    </MantineProvider>,
+  )
+}
+
+function deferredFetch() {
+  let answer: (r: Response | Error) => void = () => {}
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve, reject) => (answer = (r) => (r instanceof Error ? reject(r) : resolve(r))))))
+  return (r: Response | Error) => answer(r)
+}
+
+// Records whether the protected content was ever in the DOM.
+function watchSecret() {
+  const seen = { shown: false }
+  const observer = new MutationObserver(() => (seen.shown ||= document.body.textContent?.includes('secret content') ?? false))
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+  return seen
+}
+
+// Snapshot restored from the previous session of user 1, who owns the offline data; /auth/me still pending.
+async function restoredPending() {
+  await claimOfflineData(new QueryClient(), me.id)
+  const answer = deferredFetch()
+  const seen = watchSecret()
+  const queryClient = new QueryClient()
+  renderRestored(queryClient, seeded())
+  await vi.waitFor(() => expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }]))
+  await new Promise((r) => setTimeout(r, 300))
+  expect(seen.shown).toBe(false)
+  return { answer, seen, queryClient }
 }
 
 function seeded() {
@@ -145,6 +186,28 @@ test('the same user is shown once the server confirms', async () => {
   await claimOfflineData(queryClient, me.id)
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(me), { status: 200 })))
   renderProtected(queryClient)
+  expect(await screen.findByText('secret content')).toBeInTheDocument()
+  expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
+})
+
+test('restored snapshot: nothing shows while /auth/me is pending; another user is wiped without ever being shown', async () => {
+  const reload = vi.spyOn(browser, 'reload').mockImplementation(() => {})
+  const { answer, seen, queryClient } = await restoredPending()
+  answer(new Response(JSON.stringify({ ...me, id: '2' }), { status: 200 }))
+  await vi.waitFor(() => expect(reload).toHaveBeenCalled())
+  expect(seen.shown).toBe(false)
+  expect(queryClient.getQueryData(['trips'])).toBeUndefined()
+})
+
+test('restored snapshot: the same user is shown once /auth/me confirms', async () => {
+  const { answer } = await restoredPending()
+  answer(new Response(JSON.stringify(me), { status: 200 }))
+  expect(await screen.findByText('secret content')).toBeInTheDocument()
+})
+
+test('restored snapshot: a network error shows the cached content (offline)', async () => {
+  const { answer, queryClient } = await restoredPending()
+  answer(new TypeError('Failed to fetch'))
   expect(await screen.findByText('secret content')).toBeInTheDocument()
   expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
 })
