@@ -2,7 +2,9 @@
 
 Step-by-step checklist for putting Travel Planner on the server and keeping it up to date. Details and background for each step are in [operations.md](operations.md); the section numbers below point there.
 
-Setup assumed: server B runs Debian with rootless Docker under the dedicated user `travel`; Nginx Proxy Manager (NPM) runs on server A and reaches server B over the internal network. Unless stated otherwise, run every command as `travel` from `~/travel-planner/deploy`.
+Setup assumed: server B runs Debian with rootless Docker under the dedicated user `travel`; Nginx Proxy Manager (NPM) runs on server A and reaches server B over the internal network. Unless stated otherwise, run every command as `travel` from `<APP_DIR>/deploy`.
+
+`<APP_DIR>` is the folder you clone the repository into, for example `/srv/apps/travel-planner` or `~/travel-planner`. Replace it with your real path everywhere below; in the crontab, write the full path. The scripts in `deploy/` work from any location.
 
 ## First deploy
 
@@ -21,9 +23,11 @@ Then, as `travel`, install rootless Docker (`dockerd-rootless-setuptool.sh insta
 ### 2. Get the code
 
 ```bash
-git clone https://github.com/LuuckA21/travel-planner.git ~/travel-planner
-cd ~/travel-planner/deploy
+git clone https://github.com/LuuckA21/travel-planner.git <APP_DIR>
+cd <APP_DIR>/deploy
 ```
+
+If `<APP_DIR>` is outside the user's home (for example under `/srv`), create it as root first and give it to `travel`: `mkdir -p /srv/apps/travel-planner && chown travel: /srv/apps/travel-planner`.
 
 If the repository is private, clone it with a read-only deploy key (GitHub → repository Settings → Deploy keys) or a fine-grained token with read access.
 
@@ -109,25 +113,25 @@ Run all of this as `travel`.
    command -v docker           # e.g. /usr/bin/docker; if it is in ~/bin, add that folder to PATH below
    ```
 
-3. **Simulate cron's minimal environment.** Cron starts with almost no environment variables, so this catches PATH or `DOCKER_HOST` problems before the first night. Replace `<uid>`, then run:
+3. **Simulate cron's minimal environment.** Cron starts with almost no environment variables, so this catches PATH or `DOCKER_HOST` problems before the first night. Replace `<uid>` and `<APP_DIR>`, then run:
 
    ```bash
    env -i HOME="$HOME" PATH=/usr/local/bin:/usr/bin:/bin \
      DOCKER_HOST=unix:///run/user/<uid>/docker.sock \
-     sh -c 'cd "$HOME/travel-planner/deploy" && ./backup-check.sh'
+     sh -c 'cd <APP_DIR>/deploy && ./backup-check.sh'
    ```
 
    It must end with `BACKUP CHECK OK`.
 
-4. **Add the jobs.** Run `crontab -e` (choose an editor the first time) and add these lines, replacing `<uid>`:
+4. **Add the jobs.** Run `crontab -e` (choose an editor the first time) and add these lines, replacing `<uid>` and `<APP_DIR>`:
 
    ```cron
    PATH=/usr/local/bin:/usr/bin:/bin
    DOCKER_HOST=unix:///run/user/<uid>/docker.sock
    # every night at 03:15: database + files
-   15 3 * * * cd "$HOME/travel-planner/deploy" && ./backup.sh >> "$HOME/backup.log" 2>&1
+   15 3 * * * cd <APP_DIR>/deploy && ./backup.sh >> "$HOME/backup.log" 2>&1
    # every Sunday at 04:45: integrity check of the backup repository
-   45 4 * * 0 cd "$HOME/travel-planner/deploy" && ./backup-check.sh >> "$HOME/backup.log" 2>&1
+   45 4 * * 0 cd <APP_DIR>/deploy && ./backup-check.sh >> "$HOME/backup.log" 2>&1
    ```
 
    The times use the server's time zone (`timedatectl` shows it). Save, then check with `crontab -l`.
@@ -170,7 +174,7 @@ A red `deploy-scripts` means `update.sh` itself may misbehave: do not run it unt
 Then run:
 
 ```bash
-~/travel-planner/deploy/update.sh
+<APP_DIR>/deploy/update.sh
 ```
 
 The script runs these steps in order and stops at the first one that fails:
