@@ -1,0 +1,38 @@
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  session:
+    jdbc:
+      initialize-schema: never
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
+
+server:
+  servlet:
+    session:
+      timeout: 30d
+  # Forwarded headers are trusted because ufw restricts the port to NPM (spec section 3). NPM appends to a client-supplied
+  # X-Forwarded-For, so rate limiting uses its rightmost entry (see ClientIp), not the remote address derived from it.
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    mail:
+      enabled: false
+
+app:
+  registration-open: false
+  base-url: http://localhost:5173
+  mail-from: noreply@localhost
+  storage-dir: ./data/files

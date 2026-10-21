@@ -113,7 +113,7 @@ Internet ──HTTPS──> Nginx Proxy Manager (server A)
   ufw rules apply to them.
 - **Database** has no published ports.
 - **Forwarded headers.** Spring trusts `X-Forwarded-For` / `X-Forwarded-Proto`
-  (`server.forward-headers-strategy=native`) so that rate limiting sees the
+  (`server.forward-headers-strategy=framework`) so that rate limiting sees the
   real client IP and cookies are marked `Secure`. This is safe because only
   NPM can reach the port.
 - **Upload limits** are 25 MB per file, set in Spring
@@ -147,8 +147,9 @@ user ──< trip ──< activity
 ```
 
 ### user_account
-`id`, `email` (unique, stored lowercased), `password_hash` (bcrypt via
-Spring Security's default `DelegatingPasswordEncoder`), `display_name`,
+`id`, `email` (unique, stored lowercased), `password_hash` (PBKDF2 as the
+default of a `DelegatingPasswordEncoder`; bcrypt would reject passwords over
+72 bytes), `display_name`,
 `email_verified_at` (nullable).
 
 ### auth_token

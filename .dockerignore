@@ -1,0 +1,9 @@
+.git
+.superpowers
+docs
+deploy
+**/node_modules
+**/target
+**/dist
+backend/data
+**/.env

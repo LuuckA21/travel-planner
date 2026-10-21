@@ -1,0 +1,44 @@
+services:
+  app:
+    build: ..
+    ports:
+      - "${APP_BIND_IP:?set APP_BIND_IP in deploy/.env}:8081:8080"
+    env_file: ${ENV_FILE:-.env}
+    volumes:
+      - files:/data/files
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:18.6
+    # Only the database settings, not the app's SMTP and other secrets
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Run on demand by backup.sh; restic runs as root so it can read the 0600 files owned by uid 10001.
+  backup:
+    image: restic/restic:0.19.1
+    profiles: ["tools"]
+    # Fixed: restic groups snapshots by host, and run containers get a random one, which would stop retention from pruning.
+    hostname: travel-planner-backup
+    env_file: ${BACKUP_ENV_FILE:-backup.env}
+    volumes:
+      - files:/data/files:ro
+      - restic-cache:/root/.cache/restic
+
+volumes:
+  db-data:
+  files:
+  restic-cache:
