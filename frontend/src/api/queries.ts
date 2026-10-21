@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from './client'
-import type { TripDetail, TripSummary } from './types'
+import type { Activity, TripDetail, TripSummary } from './types'
 
 export interface TripInput {
   name: string
@@ -55,5 +55,43 @@ export function useDeleteCover() {
   return useMutation({
     mutationFn: (id: string) => apiFetch<void>(`/trips/${id}/cover`, { method: 'DELETE' }),
     onSuccess: (_, id) => invalidateTrip(qc, id),
+  })
+}
+
+export interface ActivityInput {
+  date: string
+  title: string
+  startTime: string | null
+  location: string | null
+  mapsUrl: string | null
+  notes: string | null
+}
+
+export function useSaveActivity(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string; data: ActivityInput }) =>
+      apiFetch<Activity>(id ? `/activities/${id}` : `/trips/${tripId}/activities`, {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useDeleteActivity(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/activities/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateTrip(qc, tripId),
+  })
+}
+
+export function useReorderActivities(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { date: string; activityIds: string[] }) =>
+      apiFetch<void>(`/trips/${tripId}/activities/order`, { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => invalidateTrip(qc, tripId),
   })
 }

@@ -26,7 +26,7 @@ export function groupByDay(trip: TripDetail): { days: DaySection[]; outside: Act
     if (section) section.activities.push(a)
     else outside.push(a)
   }
-  for (const b of trip.bookings) {
+  for (const b of [...trip.bookings].sort((a, c) => a.startAt.localeCompare(c.startAt))) {
     const start = dateOf(b.startAt)
     const end = b.endAt ? dateOf(b.endAt) : start
     byDate.get(start)?.bookings.push(b)

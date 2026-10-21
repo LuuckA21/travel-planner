@@ -25,6 +25,13 @@ test('booking spanning days appears on start and end day only', () => {
   expect(days.filter((d) => d.bookings.length).map((d) => d.date)).toEqual(['2027-03-10', '2027-03-14'])
 })
 
+test('bookings within a day are ordered by start time', () => {
+  const { days } = groupByDay(
+    trip([], [booking('late', '2027-03-11T18:00:00', null), booking('early', '2027-03-11T08:00:00', null), booking('night', '2027-03-10T22:00:00', '2027-03-11T06:00:00')]),
+  )
+  expect(days[1].bookings.map((b) => b.id)).toEqual(['night', 'early', 'late'])
+})
+
 test('overnight flight appears on both days', () => {
   const { days } = groupByDay(trip([], [booking('f', '2027-03-11T22:30:00', '2027-03-12T06:15:00')]))
   expect(days.filter((d) => d.bookings.length).map((d) => d.date)).toEqual(['2027-03-11', '2027-03-12'])
