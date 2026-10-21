@@ -27,6 +27,16 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Run on demand by backup.sh; restic runs as root so it can read the 0600 files owned by uid 10001.
+  backup:
+    image: restic/restic:0.19.1
+    profiles: ["tools"]
+    env_file: ${BACKUP_ENV_FILE:-backup.env}
+    volumes:
+      - files:/data/files:ro
+      - restic-cache:/root/.cache/restic
+
 volumes:
   db-data:
   files:
+  restic-cache:
