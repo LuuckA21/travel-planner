@@ -147,8 +147,9 @@ user ──< trip ──< activity
 ```
 
 ### user_account
-`id`, `email` (unique, stored lowercased), `password_hash` (bcrypt via
-Spring Security's default `DelegatingPasswordEncoder`), `display_name`,
+`id`, `email` (unique, stored lowercased), `password_hash` (PBKDF2 as the
+default of a `DelegatingPasswordEncoder`; bcrypt would reject passwords over
+72 bytes), `display_name`,
 `email_verified_at` (nullable).
 
 ### auth_token
