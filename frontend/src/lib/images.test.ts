@@ -7,12 +7,17 @@ afterEach(() => {
 })
 
 function stubCanvas(width: number, height: number) {
-  const drawImage = vi.fn()
+  const calls: string[] = []
+  const ctx = {
+    fillStyle: '',
+    fillRect: () => calls.push(`fill ${ctx.fillStyle}`),
+    drawImage: () => calls.push('draw'),
+  }
   const toBlob = vi.fn((cb: BlobCallback, type: string) => cb(new Blob(['x'], { type })))
-  const canvas = { width: 0, height: 0, getContext: () => ({ drawImage }), toBlob }
+  const canvas = { width: 0, height: 0, getContext: () => ctx, toBlob }
   vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width, height, close() {} }))
   vi.spyOn(document, 'createElement').mockReturnValue(canvas as never)
-  return { canvas, toBlob }
+  return { canvas, toBlob, calls }
 }
 
 test('downscales a large image to maxEdge as JPEG', async () => {
@@ -29,4 +34,16 @@ test('returns the original file when already small or not a supported image', as
   expect(await compressImage(small, 1600)).toBe(small)
   const pdf = new File(['x'], 'a.pdf', { type: 'application/pdf' })
   expect(await compressImage(pdf, 1600)).toBe(pdf)
+})
+
+test('paints a white background before drawing so transparency does not turn black', async () => {
+  const { calls } = stubCanvas(4000, 2000)
+  await compressImage(new File(['x'], 'a.png', { type: 'image/png' }), 1600)
+  expect(calls).toEqual(['fill #fff', 'draw'])
+})
+
+test('returns the original file when the image cannot be decoded', async () => {
+  vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('bad image')))
+  const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' })
+  expect(await compressImage(file, 1600)).toBe(file)
 })

@@ -131,7 +131,7 @@ export default function TripFormPage() {
   const { id } = useParams()
   const trip = useTrip(id)
   if (!id) return <TripForm />
-  if (trip.isError) return <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert>
-  if (!trip.data) return <Loader m="md" />
+  // Keep the form mounted when a background refetch fails; unmounting would lose the user's edits.
+  if (!trip.data) return trip.isError ? <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert> : <Loader m="md" />
   return <TripForm trip={trip.data} />
 }

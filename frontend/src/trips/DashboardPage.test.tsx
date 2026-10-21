@@ -1,6 +1,7 @@
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { TripSummary } from '../api/types'
@@ -68,4 +69,23 @@ test('empty state offers a new trip', async () => {
   renderDashboard([])
   expect(await screen.findByText(m.dashboard.empty)).toBeInTheDocument()
   expect(screen.getAllByRole('link', { name: m.dashboard.newTrip }).length).toBeGreaterThan(0)
+})
+
+test('logout on a network error shows the Italian error and stays on the dashboard', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) => (url === '/api/trips' ? Promise.resolve(new Response('[]')) : Promise.reject(new TypeError('offline')))),
+  )
+  render(
+    <MantineProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </MantineProvider>,
+  )
+  await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(await screen.findByRole('button', { name: m.auth.logout }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(m.common.networkError)
+  expect(screen.getByRole('heading', { name: m.dashboard.title })).toBeInTheDocument()
 })
