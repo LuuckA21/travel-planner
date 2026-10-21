@@ -194,6 +194,24 @@ class DocumentApiTest extends IntegrationTest {
     }
 
     @Test
+    void rolledBackDeleteKeepsFile() throws Exception {
+        String doc = uploadPdf();
+        Path file = fileOf(doc);
+        doThrow(new IllegalStateException("db down")).when(documents).flush();
+        assertThatThrownBy(() -> mvc.perform(delete("/api/documents/" + doc).with(me).with(csrf())))
+                .hasRootCauseMessage("db down");
+        assertThat(file).exists();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM trip_document", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void missingFileIs404() throws Exception {
+        String doc = uploadPdf();
+        Files.delete(fileOf(doc));
+        mvc.perform(get("/api/documents/" + doc + "/file").with(me)).andExpect(status().isNotFound());
+    }
+
+    @Test
     void failedInsertRemovesStoredFile() throws Exception {
         long before = filesInRoot();
         doThrow(new IllegalStateException("db down")).when(documents).save(any());

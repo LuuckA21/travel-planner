@@ -1,14 +1,10 @@
 package me.luucka.travelplanner.document;
 
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import me.luucka.travelplanner.auth.AppUserDetails;
-import org.springframework.core.io.FileSystemResource;
+import me.luucka.travelplanner.common.storage.StoredFiles;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,14 +37,7 @@ class DocumentController {
     ResponseEntity<Resource> file(@AuthenticationPrincipal AppUserDetails user, @PathVariable UUID id,
                                   @RequestParam(defaultValue = "false") boolean download) {
         var f = service.open(id, user.id());
-        var disposition = (download ? ContentDisposition.attachment() : ContentDisposition.inline())
-                .filename(f.filename(), StandardCharsets.UTF_8).build();
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(f.contentType()))
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .header(HttpHeaders.CACHE_CONTROL, "private, no-cache")
-                .body(new FileSystemResource(f.path()));
+        return StoredFiles.response(f.path(), f.contentType(), f.filename(), download);
     }
 
     @DeleteMapping("/api/documents/{id}")

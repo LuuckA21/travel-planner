@@ -39,6 +39,8 @@ class OwnershipTest extends IntegrationTest {
             "{\"name\":\"X\",\"destinations\":[\"Roma\"],\"startDate\":\"2027-03-10\",\"endDate\":\"2027-03-12\"}";
 
     static final String MULTIPART = "multipart";
+    static final String COVER_MULTIPART = "multipart-cover";
+    static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
     static final byte[] PDF = "%PDF-1.4\n%%EOF\n".getBytes(StandardCharsets.US_ASCII);
 
     @Autowired TripRepository trips;
@@ -48,6 +50,7 @@ class OwnershipTest extends IntegrationTest {
     UUID activity;
     UUID booking;
     UUID document;
+    String coverKey;
     RequestPostProcessor userA;
     RequestPostProcessor userB;
 
@@ -68,6 +71,8 @@ class OwnershipTest extends IntegrationTest {
         jdbc.update("INSERT INTO trip_document (id, trip_id, original_filename, content_type, size_bytes, storage_key)"
                         + " VALUES (?, ?, 'a.pdf', 'application/pdf', ?, ?)", document, trip, PDF.length,
                 storage.store(new ByteArrayInputStream(PDF)));
+        coverKey = storage.store(new ByteArrayInputStream(PNG));
+        jdbc.update("UPDATE trip SET cover_storage_key = ? WHERE id = ?", coverKey, trip);
     }
 
     static Stream<Arguments> endpoints() {
@@ -84,7 +89,10 @@ class OwnershipTest extends IntegrationTest {
                 Arguments.of(HttpMethod.DELETE, "/api/bookings/{booking}", null),
                 Arguments.of(HttpMethod.POST, "/api/trips/{trip}/documents", MULTIPART),
                 Arguments.of(HttpMethod.GET, "/api/documents/{document}/file", null),
-                Arguments.of(HttpMethod.DELETE, "/api/documents/{document}", null));
+                Arguments.of(HttpMethod.DELETE, "/api/documents/{document}", null),
+                Arguments.of(HttpMethod.PUT, "/api/trips/{trip}/cover", COVER_MULTIPART),
+                Arguments.of(HttpMethod.GET, "/api/trips/{trip}/cover", null),
+                Arguments.of(HttpMethod.DELETE, "/api/trips/{trip}/cover", null));
     }
 
     @ParameterizedTest
@@ -99,6 +107,9 @@ class OwnershipTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT title FROM booking WHERE id = ?", String.class, booking))
                 .isEqualTo("Flight");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM trip_document", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT cover_storage_key FROM trip WHERE id = ?", String.class, trip))
+                .isEqualTo(coverKey);
+        assertThat(storage.path(coverKey)).exists();
         // Positive control (last: DELETE rows destroy the fixture): the owner's identical request is not a 404
         assertThat(send(userA, method, template, body)).isNotEqualTo(404);
     }
@@ -106,11 +117,13 @@ class OwnershipTest extends IntegrationTest {
     private int send(RequestPostProcessor user, HttpMethod method, String template, String body) throws Exception {
         String uri = template.replace("{trip}", trip.toString()).replace("{activity}", activity.toString())
                 .replace("{booking}", booking.toString()).replace("{document}", document.toString());
-        var req = MULTIPART.equals(body)
-                ? multipart(uri).file(new MockMultipartFile("file", "b.pdf", "application/pdf", PDF))
-                : request(method, uri);
+        boolean multipart = MULTIPART.equals(body) || COVER_MULTIPART.equals(body);
+        var req = !multipart ? request(method, uri)
+                : MULTIPART.equals(body)
+                ? multipart(method, uri).file(new MockMultipartFile("file", "b.pdf", "application/pdf", PDF))
+                : multipart(method, uri).file(new MockMultipartFile("file", "b.png", "image/png", PNG));
         req.with(user).with(csrf());
-        if (body != null && !MULTIPART.equals(body)) {
+        if (body != null && !multipart) {
             req.contentType(APPLICATION_JSON).content(body.replace("{activity}", activity.toString()));
         }
         return mvc.perform(req).andReturn().getResponse().getStatus();
@@ -126,6 +139,9 @@ class OwnershipTest extends IntegrationTest {
                 .file(new MockMultipartFile("file", "b.pdf", "application/pdf", PDF)).param("bookingId", booking.toString());
         assertThat(mvc.perform(upload.with(userB).with(csrf())).andReturn().getResponse().getStatus()).isEqualTo(404);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM trip_document", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT cover_storage_key FROM trip WHERE id = ?", String.class, trip))
+                .isEqualTo(coverKey);
+        assertThat(storage.path(coverKey)).exists();
         // Positive control: A with the same booking on A's own trip is accepted
         var own = multipart("/api/trips/" + trip + "/documents")
                 .file(new MockMultipartFile("file", "b.pdf", "application/pdf", PDF)).param("bookingId", booking.toString());
