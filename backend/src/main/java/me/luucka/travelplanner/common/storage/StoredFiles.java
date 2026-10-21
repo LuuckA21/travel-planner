@@ -111,7 +111,8 @@ public class StoredFiles {
     private void deleteNow(String key) {
         try {
             storage.delete(key);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            // Runs after commit: a failure must neither skip the remaining files nor fail the committed request.
             log.warn("Could not delete stored file {}", key, e);
         }
     }

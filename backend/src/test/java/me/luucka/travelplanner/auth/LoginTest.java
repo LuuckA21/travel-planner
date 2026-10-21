@@ -91,6 +91,20 @@ class LoginTest extends IntegrationTest {
     }
 
     @Test
+    void longEmailUpTo254CharsCanLogIn() throws Exception {
+        String email = "a".repeat(108) + "@example.it";
+        testUsers.create(email, PASSWORD);
+        mvc.perform(login(email, PASSWORD)).andExpect(status().isOk());
+    }
+
+    @Test
+    void oversizedLoginEmailIs400() throws Exception {
+        mvc.perform(login("a".repeat(290) + "@example.it", PASSWORD))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.email").exists());
+    }
+
+    @Test
     void wrongPasswordIs401() throws Exception {
         testUsers.create(EMAIL, PASSWORD);
         mvc.perform(login(EMAIL, "wrongpassword"))
