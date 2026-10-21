@@ -24,11 +24,8 @@ export function useMe(): { me?: Me; status: MeStatus } {
     // Re-render on every outcome, even an unchanged user: the claim gate below waits for one.
     notifyOnChangeProps: 'all',
   })
+  // Offline data survives an expired session (tickets mid-trip); claimOfflineData wipes it if another user signs in.
   const expired = q.error instanceof ApiError && q.error.status === 401
-  // The session is gone: drop the previous user's cached data so the next user on this device never sees it.
-  useEffect(() => {
-    if (expired) void clearOfflineData(queryClient)
-  }, [expired, queryClient])
   const userId = q.data?.id
   // Answered = a /auth/me outcome (success or failure) newer than the cache state once restoring ended. Not
   // isFetchedAfterMount: hydrating a persisted snapshot after mount bumps the same counters before the server answers.

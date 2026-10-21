@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, apiFetch, NetworkError } from '../api/client'
 import { m } from '../i18n/it'
+import { fieldErrors as fieldMessages } from '../lib/fieldErrors'
 import AuthLayout from './AuthLayout'
 
 function errorText(e: unknown): string {
@@ -24,7 +25,7 @@ export default function SignupPage() {
     mutationFn: () =>
       apiFetch<void>('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, displayName }) }),
   })
-  const fieldErrors = signup.error instanceof ApiError ? signup.error.fieldErrors : undefined
+  const fieldErrors = signup.error instanceof ApiError && signup.error.fieldErrors ? fieldMessages(signup.error) : undefined
 
   const submit = (e: FormEvent) => {
     e.preventDefault()

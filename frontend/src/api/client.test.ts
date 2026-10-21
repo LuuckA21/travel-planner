@@ -60,6 +60,11 @@ test('returns undefined for 204', async () => {
   await expect(apiFetch('/trips/1', { method: 'DELETE' })).resolves.toBeUndefined()
 })
 
+test.each([201, 202])('returns undefined for an empty %i', async (status) => {
+  fetchMock.mockResolvedValue(new Response(null, { status }))
+  await expect(apiFetch('/auth/register', { method: 'POST' })).resolves.toBeUndefined()
+})
+
 test('apiUpload sends FormData without a JSON content type', async () => {
   fetchMock.mockResolvedValue(new Response('{}', { status: 201 }))
   const form = new FormData()

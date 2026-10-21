@@ -120,3 +120,8 @@ test('data whose last refetch failed is still persisted, so a second offline sta
 
   expect(restored.getQueryData(['me'])).toEqual({ id: 'user-a' })
 })
+
+test('the persisted cache lives 400 days, longer than the longest trip', async () => {
+  const { persistOptions } = await freshSession()
+  expect(persistOptions.maxAge).toBe(400 * 24 * 60 * 60 * 1000)
+})

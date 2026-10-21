@@ -1,5 +1,5 @@
 import { MantineProvider } from '@mantine/core'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -73,6 +73,16 @@ test('detail shows all fields and only the documents attached to this booking', 
   expect(screen.getByRole('link', { name: 'biglietto.pdf' })).toHaveAttribute('href', '/files/d1')
   expect(screen.queryByText('altro.pdf')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: m.documents.upload })).toBeInTheDocument()
+})
+
+test('detail of a trip never cached offline says it is not available offline', async () => {
+  onlineManager.setOnline(false)
+  try {
+    renderDetail(trip())
+    expect(await screen.findByText(m.common.unavailableOffline)).toBeInTheDocument()
+  } finally {
+    onlineManager.setOnline(true)
+  }
 })
 
 test('detail redirects to the bookings tab when the booking does not exist', async () => {

@@ -28,7 +28,8 @@ export function createPersister(): Persister {
 
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister: createPersister(),
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+  // Longer than the longest trip (365 days), so a trip planned months ahead stays available offline.
+  maxAge: 400 * 24 * 60 * 60 * 1000,
   buster: version,
   dehydrateOptions: {
     // Keep data whose last refetch failed (e.g. offline): the default persists only 'success' queries, so the

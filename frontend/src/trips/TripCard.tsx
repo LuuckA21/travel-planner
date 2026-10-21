@@ -1,4 +1,4 @@
-import { Button, Card, Group, Image, Text, Title } from '@mantine/core'
+import { Anchor, Button, Card, Group, Image, Text, Title } from '@mantine/core'
 import { Link } from 'react-router'
 import type { TripSummary } from '../api/types'
 import { m } from '../i18n/it'
@@ -13,7 +13,10 @@ export default function TripCard({ trip, today }: { trip: TripSummary; today?: s
           <Image src={trip.coverUrl} alt="" h={140} />
         </Card.Section>
       )}
-      <Title order={3} size="h4" mt="sm">{trip.name}</Title>
+      <Title order={3} size="h4" mt="sm">
+        {/* A plain link: cached trips must open offline too. */}
+        <Anchor component={Link} to={`/trips/${trip.id}`} inherit>{trip.name}</Anchor>
+      </Title>
       {trip.destinations.length > 0 && <Text size="sm">{trip.destinations.join(' · ')}</Text>}
       <Text size="sm" c="dimmed">{formatDateRange(trip.startDate, trip.endDate)}</Text>
       <Group mt="sm" gap="xs">

@@ -1,4 +1,4 @@
-import { Alert, Box, Container, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
+import { Alert, Anchor, Box, Container, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
 import type { ComponentType } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useTrip } from '../api/queries'
@@ -36,7 +36,11 @@ export default function TripPage() {
   const trip = useTrip(id)
 
   // Check data first: a failed background refetch must not replace content.
-  if (!trip.data) return trip.isError ? <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert> : <Loader m="md" />
+  if (!trip.data) {
+    if (trip.isError) return <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert>
+    // Offline and never cached: the query stays paused, so a loader would spin forever.
+    return trip.fetchStatus === 'paused' ? <Alert m="md">{m.common.unavailableOffline}</Alert> : <Loader m="md" />
+  }
   if (!isTab(tab)) return <Navigate to={`/trips/${trip.data.id}/summary`} replace />
 
   const data = trip.data
@@ -45,6 +49,7 @@ export default function TripPage() {
     <>
       <Container size="lg" my="md" pb="calc(80px + env(safe-area-inset-bottom))">
         <Stack>
+          <Anchor component={Link} to="/">← {m.trip.back}</Anchor>
           {data.coverUrl && <Image src={data.coverUrl} alt="" h={160} radius="md" />}
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <Stack gap={0}>
@@ -59,9 +64,15 @@ export default function TripPage() {
         </Stack>
       </Container>
       <Box component="nav" aria-label={m.trip.nav} pos="fixed" bottom={0} left={0} right={0} bg="var(--mantine-color-body)" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
-        <Group justify="space-around" pt="xs" pb="calc(var(--mantine-spacing-xs) + env(safe-area-inset-bottom))" wrap="nowrap">
+        <Group gap={0} pb="env(safe-area-inset-bottom)" wrap="nowrap">
           {(Object.keys(tabs) as Tab[]).map((k) => (
-            <Link key={k} to={`/trips/${data.id}/${k}`} aria-current={k === tab ? 'page' : undefined} style={{ fontWeight: k === tab ? 700 : 400, fontSize: 14 }}>
+            // 44px tap targets sharing the width equally; long labels ellipsize on narrow phones.
+            <Link
+              key={k}
+              to={`/trips/${data.id}/${k}`}
+              aria-current={k === tab ? 'page' : undefined}
+              style={{ flex: 1, minWidth: 0, display: 'block', minHeight: 44, lineHeight: '44px', padding: '0 2px', textAlign: 'center', fontSize: 12, fontWeight: k === tab ? 700 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
               {m.trip.tabs[k]}
             </Link>
           ))}

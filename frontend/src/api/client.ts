@@ -44,8 +44,9 @@ async function send<T>(path: string, init: RequestInit, headers: Headers): Promi
     const problem = await res.json().catch(() => ({}))
     throw new ApiError(res.status, problem.detail ?? res.statusText, problem.code, problem.errors)
   }
-  if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+  // 201/202 from the auth endpoints have no body either.
+  const text = await res.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 export function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {

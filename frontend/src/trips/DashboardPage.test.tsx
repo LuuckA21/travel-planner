@@ -73,6 +73,33 @@ test('Today button links to current day', async () => {
   expect(link).toHaveAttribute('href', '/trips/now/itinerary?day=2026-10-21')
 })
 
+test('every trip card links to its trip page', async () => {
+  renderDashboard()
+  const upcoming = await screen.findByRole('region', { name: m.dashboard.upcoming })
+  expect(within(upcoming).getByRole('link', { name: 'Trip up-soon' })).toHaveAttribute('href', '/trips/up-soon')
+  expect(within(screen.getByRole('region', { name: m.dashboard.past })).getByRole('link', { name: 'Trip past-old' })).toHaveAttribute('href', '/trips/past-old')
+})
+
+test('a failed refetch with trips on screen shows no error alert', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(['trips'], trips)
+  render(
+    <MantineProvider>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </MantineProvider>,
+  )
+  await queryClient.refetchQueries({ queryKey: ['trips'] })
+  await vi.waitFor(() => expect(queryClient.getQueryState(['trips'])?.status).toBe('error'))
+  await new Promise((r) => setTimeout(r, 50)) // let the error state render
+  expect(screen.getByRole('region', { name: m.dashboard.upcoming })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
 test('empty state offers a new trip', async () => {
   renderDashboard([])
   expect(await screen.findByText(m.dashboard.empty)).toBeInTheDocument()

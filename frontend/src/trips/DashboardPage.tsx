@@ -62,7 +62,7 @@ export default function DashboardPage() {
         </Group>
         {logoutError && <Alert color="red" role="alert">{logoutError}</Alert>}
         {trips.isPending && <Loader />}
-        {trips.isError && <Alert color="red" role="alert">{m.common.networkError}</Alert>}
+        {trips.isError && !trips.data && <Alert color="red" role="alert">{m.common.networkError}</Alert>}
         {trips.data && all.length === 0 && (
           <Stack align="center" py="xl">
             <Text>{m.dashboard.empty}</Text>

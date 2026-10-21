@@ -125,13 +125,14 @@ test.each([500, 502])('a %i with cached user does not redirect', async (status) 
   expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
 })
 
-test('a 401 wins over the cached user and clears cached data', async () => {
+test('a 401 wins over the cached user: redirects to login but keeps the offline data', async () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 401 }))
   vi.stubGlobal('fetch', fetchMock)
   const queryClient = seeded()
   renderProtected(queryClient)
   expect(await screen.findByText('login page')).toBeInTheDocument()
-  await vi.waitFor(() => expect(queryClient.getQueryData(['trips'])).toBeUndefined())
+  await new Promise((r) => setTimeout(r, 50))
+  expect(queryClient.getQueryData(['trips'])).toEqual([{ id: 't1' }])
   expect(screen.queryByText('secret content')).not.toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })

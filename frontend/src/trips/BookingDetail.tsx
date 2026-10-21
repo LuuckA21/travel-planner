@@ -19,7 +19,11 @@ export default function BookingDetail() {
   const online = useOnline()
 
   // Check data first: a failed background refetch must not replace content.
-  if (!trip.data) return trip.isError ? <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert> : <Loader m="md" />
+  if (!trip.data) {
+    if (trip.isError) return <Alert m="md" color="red" role="alert">{m.common.networkError}</Alert>
+    // Offline and never cached: the query stays paused, so a loader would spin forever.
+    return trip.fetchStatus === 'paused' ? <Alert m="md">{m.common.unavailableOffline}</Alert> : <Loader m="md" />
+  }
   const booking = trip.data.bookings.find((b) => b.id === bookingId)
   // Also reached after deleting this booking from the edit modal.
   if (!booking) return <Navigate to={`/trips/${trip.data.id}/bookings`} replace />

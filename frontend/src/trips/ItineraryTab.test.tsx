@@ -182,8 +182,19 @@ test('shows field errors from the server and keeps the form open', async () => {
   await user.type(await screen.findByLabelText(new RegExp(`^${m.itinerary.title}`)), 'Cena')
   await user.type(screen.getByLabelText(m.itinerary.mapsUrl), 'http://x')
   await user.click(screen.getByRole('button', { name: m.itinerary.save }))
-  expect(await screen.findByText('deve iniziare con https://')).toBeInTheDocument()
+  expect(await screen.findByText(m.common.invalidField)).toBeInTheDocument()
+  expect(screen.queryByText('deve iniziare con https://')).not.toBeInTheDocument()
   expect(screen.getByLabelText(new RegExp(`^${m.itinerary.title}`))).toHaveValue('Cena')
+})
+
+test('a date outside the trip shows the Italian date message', async () => {
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ errors: { date: 'Date must be within the trip dates' } }), { status: 400 }))
+  renderTab(trip())
+  await user.click(screen.getByRole('button', { name: `${m.itinerary.add} – Mer 10 mar · Giorno 1` }))
+  await user.type(await screen.findByLabelText(new RegExp(`^${m.itinerary.title}`)), 'Cena')
+  await user.click(screen.getByRole('button', { name: m.itinerary.save }))
+  expect(await screen.findByText(m.common.dateOutsideTrip)).toBeInTheDocument()
 })
 
 test('delete asks for confirmation then calls DELETE', async () => {

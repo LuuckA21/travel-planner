@@ -1,9 +1,10 @@
 import { Alert, Button, Group, NativeSelect, Stack, Textarea, TextInput } from '@mantine/core'
 import { useState, type FormEvent } from 'react'
-import { ApiError, NetworkError } from '../api/client'
+import { NetworkError } from '../api/client'
 import { useDeleteBooking, useSaveBooking } from '../api/queries'
 import type { Booking, BookingType } from '../api/types'
 import { m } from '../i18n/it'
+import { fieldErrors } from '../lib/fieldErrors'
 import { useOnline } from '../offline/useOnline'
 
 const t = m.bookings
@@ -33,7 +34,7 @@ export default function BookingForm({ tripId, booking, onDone }: Props) {
   const save = useSaveBooking(tripId)
   const del = useDeleteBooking(tripId)
 
-  const fields = error instanceof ApiError ? (error.fieldErrors ?? {}) : {}
+  const fields = fieldErrors(error, { endAt: m.common.endBeforeStart })
   const generic =
     error && Object.keys(fields).length === 0
       ? error instanceof NetworkError ? m.common.networkError : m.common.genericError

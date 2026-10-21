@@ -1,11 +1,12 @@
 import { ActionIcon, Alert, Button, Container, FileInput, Group, Loader, Modal, Stack, Text, TextInput, Title } from '@mantine/core'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ApiError, NetworkError } from '../api/client'
+import { NetworkError } from '../api/client'
 import { useDeleteCover, useDeleteTrip, useSaveTrip, useTrip, useUploadCover } from '../api/queries'
 import type { TripDetail } from '../api/types'
 import { compressImage } from '../lib/images'
 import { m } from '../i18n/it'
+import { fieldErrors } from '../lib/fieldErrors'
 import { useOnline } from '../offline/useOnline'
 
 const t = m.tripForm
@@ -27,7 +28,8 @@ function TripForm({ trip }: { trip?: TripDetail }) {
   const del = useDeleteTrip()
   const online = useOnline()
 
-  const fields = error instanceof ApiError ? (error.fieldErrors ?? {}) : {}
+  // The server reports both date rules on endDate; the dates tell which one failed.
+  const fields = fieldErrors(error, { endDate: endDate < startDate ? m.common.endBeforeStart : m.common.tripTooLong })
   const destinationError = Object.entries(fields).find(([k]) => k.startsWith('destinations'))?.[1]
   const generic =
     error && Object.keys(fields).length === 0

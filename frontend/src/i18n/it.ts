@@ -6,6 +6,11 @@ export const m = {
     networkError: 'Impossibile contattare il server. Controlla la connessione.',
     tooManyRequests: 'Troppi tentativi. Riprova più tardi.',
     genericError: 'Qualcosa è andato storto. Riprova.',
+    unavailableOffline: 'Non disponibile offline. Aprilo una volta con la connessione per averlo anche offline.',
+    invalidField: 'Valore non valido',
+    endBeforeStart: 'La fine non può precedere l’inizio',
+    tripTooLong: 'Un viaggio può durare al massimo 365 giorni',
+    dateOutsideTrip: 'La data deve essere compresa nelle date del viaggio',
   },
   auth: {
     email: 'Email',
@@ -131,6 +136,7 @@ export const m = {
     empty: 'Non hai ancora nessun viaggio. Pianifica il prossimo!',
   },
   trip: {
+    back: 'I miei viaggi',
     inDays: (n: number) => (n === 1 ? 'tra 1 giorno' : `tra ${n} giorni`),
     dayOf: (n: number, total: number) => `Giorno ${n} di ${total}`,
     tabs: {

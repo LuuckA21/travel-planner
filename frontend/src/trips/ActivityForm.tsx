@@ -1,9 +1,10 @@
 import { Alert, Button, Group, Stack, Textarea, TextInput } from '@mantine/core'
 import { useState, type FormEvent } from 'react'
-import { ApiError, NetworkError } from '../api/client'
+import { NetworkError } from '../api/client'
 import { useDeleteActivity, useSaveActivity } from '../api/queries'
 import type { Activity } from '../api/types'
 import { m } from '../i18n/it'
+import { fieldErrors } from '../lib/fieldErrors'
 import { useOnline } from '../offline/useOnline'
 
 const t = m.itinerary
@@ -29,7 +30,7 @@ export default function ActivityForm({ tripId, activity, date, onDone }: Props) 
   const save = useSaveActivity(tripId)
   const del = useDeleteActivity(tripId)
 
-  const fields = error instanceof ApiError ? (error.fieldErrors ?? {}) : {}
+  const fields = fieldErrors(error, { date: m.common.dateOutsideTrip })
   const generic =
     error && Object.keys(fields).length === 0
       ? error instanceof NetworkError ? m.common.networkError : m.common.genericError

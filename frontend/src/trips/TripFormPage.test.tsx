@@ -30,7 +30,8 @@ test('shows the server field error and keeps the form', async () => {
   await user.type(screen.getByLabelText(new RegExp(m.tripForm.startDate)), '2026-05-10')
   await user.type(screen.getByLabelText(new RegExp(m.tripForm.endDate)), '2026-05-01')
   await user.click(screen.getByRole('button', { name: m.tripForm.save }))
-  expect(await screen.findByText(problem.errors.endDate)).toBeInTheDocument()
+  expect(await screen.findByText(m.common.endBeforeStart)).toBeInTheDocument()
+  expect(screen.queryByText(problem.errors.endDate)).not.toBeInTheDocument()
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'Roma', destinations: [], startDate: '2026-05-10', endDate: '2026-05-01' })
   expect(screen.queryByText('dashboard')).not.toBeInTheDocument()
 })
@@ -60,4 +61,26 @@ test('a failed background refetch keeps the form and the typed edits', async () 
   fail()
   await waitFor(() => expect(queryClient.getQueryState(['trip', 't1'])?.status).toBe('error'))
   expect(screen.getByLabelText(new RegExp(`^${m.tripForm.name}`))).toHaveValue('Roma 2027')
+})
+
+test('a trip over 365 days shows the Italian length message', async () => {
+  const problem = { errors: { endDate: 'End date must not be before start date and the trip must last at most 365 days' } }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(problem), { status: 400 })))
+  const user = userEvent.setup()
+  render(
+    <MantineProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={['/trips/new']}>
+          <Routes>
+            <Route path="/trips/new" element={<TripFormPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </MantineProvider>,
+  )
+  await user.type(screen.getByLabelText(new RegExp(`^${m.tripForm.name}`)), 'Giro del mondo')
+  await user.type(screen.getByLabelText(new RegExp(m.tripForm.startDate)), '2026-05-01')
+  await user.type(screen.getByLabelText(new RegExp(m.tripForm.endDate)), '2027-06-01')
+  await user.click(screen.getByRole('button', { name: m.tripForm.save }))
+  expect(await screen.findByText(m.common.tripTooLong)).toBeInTheDocument()
 })
