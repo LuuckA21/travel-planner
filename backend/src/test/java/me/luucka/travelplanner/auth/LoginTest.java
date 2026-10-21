@@ -14,6 +14,7 @@ import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import me.luucka.travelplanner.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.test.web.support.WebTestUtils;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -64,6 +65,17 @@ class LoginTest extends IntegrationTest {
         assertThat(after.getValue()).isNotEqualTo(before.getValue());
         mvc.perform(get("/api/auth/me").cookie(before)).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/auth/me").cookie(after)).andExpect(status().isOk());
+    }
+
+    @Test
+    void newHashesArePbkdf2AndBcryptHashesStillMatch() throws Exception {
+        UUID id = testUsers.create(EMAIL, PASSWORD);
+        assertThat(jdbc.queryForObject("SELECT password_hash FROM user_account WHERE id = ?", String.class, id))
+                .startsWith("{pbkdf2@SpringSecurity_v5_8}");
+
+        jdbc.update("UPDATE user_account SET password_hash = ? WHERE id = ?",
+                "{bcrypt}" + new BCryptPasswordEncoder().encode(PASSWORD), id);
+        mvc.perform(login(EMAIL, PASSWORD)).andExpect(status().isOk());
     }
 
     @Test
@@ -118,7 +130,7 @@ class LoginTest extends IntegrationTest {
                 .andReturn().getResponse().getHeaders("Set-Cookie");
 
         assertThat(headers).filteredOn(h -> h.startsWith("SESSION=")).singleElement()
-                .satisfies(h -> assertThat(h).contains("HttpOnly", "Secure", "SameSite=Lax"));
+                .satisfies(h -> assertThat(h).contains("HttpOnly", "Secure", "SameSite=Lax", "Max-Age=2592000"));
     }
 
     @Test

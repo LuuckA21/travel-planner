@@ -1,6 +1,9 @@
 package me.luucka.travelplanner.auth;
 
 import jakarta.servlet.Filter;
+import java.time.Duration;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +13,9 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.csrf.CsrfFilter;
@@ -53,14 +58,23 @@ class SecurityConfig {
 
     // SESSION cookie: HttpOnly, SameSite=Lax, Secure when the request is (via X-Forwarded-Proto).
     // Explicit so it does not depend on the servlet context's session cookie config (MockMvc has none).
+    // Max-Age = idle timeout, so the PWA stays logged in across browser/app restarts.
     @Bean
-    DefaultCookieSerializer cookieSerializer() {
-        return new DefaultCookieSerializer();
+    DefaultCookieSerializer cookieSerializer(@Value("${server.servlet.session.timeout}") Duration timeout) {
+        DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+        serializer.setCookieMaxAge((int) timeout.toSeconds());
+        return serializer;
     }
 
+    // PBKDF2 by default: bcrypt rejects passwords over 72 bytes, but we allow up to 128 characters.
     @Bean
     PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        String id = "pbkdf2@SpringSecurity_v5_8";
+        DelegatingPasswordEncoder encoder = new DelegatingPasswordEncoder(id,
+                Map.of(id, Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8()));
+        // Hashes with any other id ({bcrypt}, ...) still match through the standard encoders map
+        encoder.setDefaultPasswordEncoderForMatches(PasswordEncoderFactories.createDelegatingPasswordEncoder());
+        return encoder;
     }
 
     @Bean

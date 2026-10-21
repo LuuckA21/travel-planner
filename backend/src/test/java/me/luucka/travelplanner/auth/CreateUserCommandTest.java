@@ -52,4 +52,15 @@ class CreateUserCommandTest extends IntegrationTest {
         assertThat(run("ME@example.it", "supersecret2\nsupersecret2\n")).isNotZero();
         assertThat(userCount()).isOne();
     }
+
+    @Test
+    void longAndMultiBytePasswordsWork() throws Exception {
+        String longPassword = "x".repeat(128);
+        assertThat(run("long@example.it", longPassword + "\n" + longPassword + "\n")).isZero();
+        assertThat(testUsers.login("long@example.it", longPassword)).isNotNull();
+
+        String multiByte = "é".repeat(100);
+        assertThat(run("accent@example.it", multiByte + "\n" + multiByte + "\n")).isZero();
+        assertThat(testUsers.login("accent@example.it", multiByte)).isNotNull();
+    }
 }
